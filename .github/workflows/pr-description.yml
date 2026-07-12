@@ -29,14 +29,14 @@ jobs:
         uses: actions/github-script@v7
         env:
           GEMINI_API_KEY: ${{ secrets.GEM_KEY }}
-          GEMINI_MODEL: gemini-2.5-flash
+          GEMINI_MODEL: gemini-flash-latest
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const prNumber = Number(process.env.PR_NUMBER);
-            const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+            const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 
             async function react(type) {
               try {
