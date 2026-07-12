@@ -34,15 +34,15 @@ class MainActivity : ComponentActivity() {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        // Check exact alarm permission on Android 12+
         val alarmManager = getSystemService(AlarmManager::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-            startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
-        }
+        val canScheduleExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
 
-        // TEST: schedule alarm 10 seconds from now
-        val scheduler = AlarmScheduler(this)
-        scheduler.scheduleTestAlarm(System.currentTimeMillis() + 10_000)
+        if (!canScheduleExact) {
+            startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM))
+        } else {
+            val scheduler = AlarmScheduler(this)
+            scheduler.scheduleTestAlarm(System.currentTimeMillis() + 10_000)
+        }
 
         setContent {
             TuLogsTheme {
