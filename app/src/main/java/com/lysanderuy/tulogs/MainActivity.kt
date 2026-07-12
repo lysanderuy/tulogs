@@ -2,7 +2,9 @@ package com.lysanderuy.tulogs
 
 import android.Manifest
 import android.app.AlarmManager
+import android.app.NotificationManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -19,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.lysanderuy.tulogs.alarm.AlarmScheduler
 import com.lysanderuy.tulogs.ui.theme.TuLogsTheme
-
 class MainActivity : ComponentActivity() {
 
     private val notificationPermissionLauncher =
@@ -42,6 +43,14 @@ class MainActivity : ComponentActivity() {
         } else {
             val scheduler = AlarmScheduler(this)
             scheduler.scheduleTestAlarm(System.currentTimeMillis() + 10_000)
+        }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+
+        if (Build.VERSION.SDK_INT >= 34 && !notificationManager.canUseFullScreenIntent()) {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
         }
 
         setContent {
