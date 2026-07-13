@@ -39,10 +39,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.lysanderuy.tulogs.data.AlarmRepository
 import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.TagType
 import com.lysanderuy.tulogs.nfc.NfcForegroundDispatcher
+import com.lysanderuy.tulogs.ui.alarms.AlarmsScreen
+import com.lysanderuy.tulogs.ui.alarms.AlarmsViewModel
 import com.lysanderuy.tulogs.ui.home.HomeBottomNav
 import com.lysanderuy.tulogs.ui.home.HomeScreen
 import com.lysanderuy.tulogs.ui.home.HomeViewModel
@@ -63,6 +66,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var sleepLogRepository: SleepLogRepository
+
+    @Inject
+    lateinit var alarmRepository: AlarmRepository
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -168,7 +174,14 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("alarms") {
-                            ComingSoonScreen()
+                            val alarmsViewModel: AlarmsViewModel by viewModels()
+                            val uiState by alarmsViewModel.uiState.collectAsStateWithLifecycle()
+                            AlarmsScreen(
+                                uiState = uiState,
+                                onSave = alarmsViewModel::saveAlarm,
+                                onSetEnabled = alarmsViewModel::setEnabled,
+                                onDelete = alarmsViewModel::deleteAlarm
+                            )
                         }
                         composable("week") {
                             ComingSoonScreen()
@@ -213,7 +226,7 @@ class MainActivity : ComponentActivity() {
                 Log.d("NFC_PERF", "db_write_done type=WAKE t=${SystemClock.elapsedRealtime()}")
             }
             null -> {
-                // Not in registration mode — check if this is a real BEDTIME tag scan to start a session
+                // Not in registration mode — check if this is a real BEDTIME or WAKE tag scan
                 lifecycleScope.launch {
                     Log.d("NFC_PERF", "passive_check_start t=${SystemClock.elapsedRealtime()}")
                     val bedtimeTag = sleepTagRepository.getTagByType(TagType.BEDTIME)
@@ -221,6 +234,15 @@ class MainActivity : ComponentActivity() {
                         sleepLogRepository.startSession(System.currentTimeMillis())
                         Log.d("NFC_TEST", "Sleep session started")
                         Log.d("NFC_PERF", "session_started t=${SystemClock.elapsedRealtime()}")
+                    }
+
+                    val wakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
+                    if (wakeTag != null && wakeTag.uid == uid) {
+                        val wokeNaturally = sleepLogRepository.endActiveSession(System.currentTimeMillis())
+                        if (wokeNaturally) {
+                            Log.d("NFC_TEST", "Natural wake — cancelling remaining alarms for today")
+                            alarmRepository.cancelRemainingToday()
+                        }
                     }
                 }
             }

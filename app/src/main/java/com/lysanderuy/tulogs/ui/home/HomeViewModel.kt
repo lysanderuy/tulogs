@@ -2,11 +2,13 @@ package com.lysanderuy.tulogs.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lysanderuy.tulogs.alarm.AlarmOccurrence
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.Alarm
 import com.lysanderuy.tulogs.data.local.AlarmDao
 import com.lysanderuy.tulogs.data.local.SleepLog
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -19,7 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 private val dateLabelFormatter = DateTimeFormatter.ofPattern("EEE d MMM")
-private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
+private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -58,13 +60,14 @@ class HomeViewModel @Inject constructor(
                 bedtime = formatTimestamp(session.bedtimeTimestamp),
                 wake = formatTimestamp(session.wakeTimestamp!!),
                 qualityRating = 0,
-                screenOnAfterMinutes = screenOnAfterMinutes(session)
+                screenOnAfterMinutes = screenOnAfterMinutes(session),
+                duration = formatDuration(session.wakeTimestamp!! - session.bedtimeTimestamp)
             )
         }
 
-        val earliestAlarm = alarms.minByOrNull { it.hour * 60 + it.minute }
+        val earliestAlarm = alarms.minByOrNull { AlarmOccurrence.nextTrigger(it).toInstant().toEpochMilli() }
         val alarmTime = earliestAlarm?.let { LocalTime.of(it.hour, it.minute).format(timeFormatter) } ?: "Not set"
-        val alarmDays = earliestAlarm?.let { it.label.ifBlank { "Every day" } } ?: ""
+        val alarmDays = earliestAlarm?.let { it.label.ifBlank { formatDays(it.daysOfWeek) } } ?: ""
 
         return HomeUiState(
             dateLabel = dateLabel,
@@ -74,6 +77,25 @@ class HomeViewModel @Inject constructor(
             bedtimeLoggedAt = bedtimeLoggedAt,
             lastNight = lastNight
         )
+    }
+
+    private fun formatDays(days: Set<DayOfWeek>): String {
+        val weekdays = setOf(
+            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
+        )
+        val weekend = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+        return when (days) {
+            emptySet<DayOfWeek>() -> "Once"
+            weekdays -> "Weekdays"
+            weekend -> "Weekends"
+            DayOfWeek.entries.toSet() -> "Every day"
+            else -> days.sorted().joinToString(", ") { it.name.take(3).lowercase().replaceFirstChar(Char::uppercase) }
+        }
+    }
+
+    private fun formatDuration(durationMillis: Long): String {
+        val totalMinutes = durationMillis / 60000
+        return "${totalMinutes / 60}h ${totalMinutes % 60}m"
     }
 
     private fun screenOnAfterMinutes(session: SleepLog): Int? {
