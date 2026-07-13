@@ -9,7 +9,6 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,6 +52,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,7 +77,7 @@ import java.time.LocalTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import kotlin.math.abs
+import kotlin.math.floor
 import kotlinx.coroutines.delay
 
 private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
@@ -104,6 +105,23 @@ fun AlarmsScreen(
 ) {
     var editingAlarm by remember { mutableStateOf<Alarm?>(null) }
     var isEditing by remember { mutableStateOf(false) }
+    var ringInMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(ringInMessage) {
+        if (ringInMessage != null) {
+            delay(2500)
+            ringInMessage = null
+        }
+    }
+
+    // Best-effort preview of what the repository will actually schedule —
+    // rollToUpcoming is the same pure function it uses, so this matches
+    // exactly without needing a round trip through Room.
+    fun showRingInMessage(alarm: Alarm) {
+        if (!alarm.isEnabled) return
+        val trigger = AlarmOccurrence.nextTrigger(AlarmOccurrence.rollToUpcoming(alarm))
+        ringInMessage = "Ring in ${formatCountdown(Duration.between(ZonedDateTime.now(), trigger))}"
+    }
 
     Box(
         modifier = modifier
@@ -116,6 +134,7 @@ fun AlarmsScreen(
                 onBack = { isEditing = false },
                 onSave = { alarm ->
                     onSave(alarm)
+                    showRingInMessage(alarm)
                     isEditing = false
                 },
                 onDelete = { alarm ->
@@ -134,8 +153,24 @@ fun AlarmsScreen(
                     editingAlarm = alarm
                     isEditing = true
                 },
-                onSetEnabled = onSetEnabled
+                onSetEnabled = { alarm, enabled ->
+                    onSetEnabled(alarm, enabled)
+                    if (enabled) showRingInMessage(alarm.copy(isEnabled = true))
+                }
             )
+        }
+
+        ringInMessage?.let { message ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Ink800)
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Text(text = message, style = TuLogsType.captionText.copy(color = Paper50))
+            }
         }
     }
 }
@@ -202,7 +237,7 @@ private fun AlarmListScreen(
 @Composable
 private fun LiveClockBlock(now: ZonedDateTime, alarms: List<Alarm>) {
     val nextTrigger = alarms
-        .filter { it.isEnabled }
+        .filter { it.isEnabled && AlarmOccurrence.isUpcoming(it, now) }
         .map { AlarmOccurrence.nextTrigger(it, now) }
         .minByOrNull { it.toInstant().toEpochMilli() }
 
@@ -299,8 +334,8 @@ private fun AlarmEditScreen(
     onSave: (Alarm) -> Unit,
     onDelete: (Alarm) -> Unit
 ) {
-    val originalHour = remember { alarm?.hour ?: 6 }
-    val originalMinute = remember { alarm?.minute ?: 30 }
+    val originalHour = remember { alarm?.hour ?: LocalTime.now().hour }
+    val originalMinute = remember { alarm?.minute ?: LocalTime.now().minute }
     val originalLabel = remember { alarm?.label ?: "" }
     val originalDaysOfWeek = remember { alarm?.daysOfWeek ?: emptySet() }
     val originalDate = remember { alarm?.date ?: LocalDate.now() }
@@ -448,8 +483,12 @@ private fun AlarmEditScreen(
     }
 
     if (showDatePicker) {
+        val todayEpochMillis = remember { LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() }
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+            initialSelectedDateMillis = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis >= todayEpochMillis
+            }
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -546,13 +585,18 @@ private fun WheelPicker(
         initialFirstVisibleItemIndex = (initialVirtualIndex - wheelVisibleCount / 2).coerceAtLeast(0)
     )
     val flingBehavior = rememberSnapFlingBehavior(listState)
+    val density = LocalDensity.current
+    val itemHeightPx = with(density) { wheelItemHeight.toPx() }
 
+    // Derived directly from firstVisibleItemIndex + pixel scroll offset —
+    // since every item is the same fixed height, this pins down exactly
+    // which item's band contains the viewport's center, with no dependency
+    // on contentPadding-adjusted viewport offsets (which don't line up
+    // cleanly and caused the picker to land a couple items off-center).
     val centeredIndex by remember {
         derivedStateOf {
-            val info = listState.layoutInfo
-            if (info.visibleItemsInfo.isEmpty()) return@derivedStateOf initialVirtualIndex
-            val viewportCenter = (info.viewportStartOffset + info.viewportEndOffset) / 2
-            info.visibleItemsInfo.minByOrNull { abs((it.offset + it.size / 2) - viewportCenter) }!!.index
+            val fraction = listState.firstVisibleItemScrollOffset / itemHeightPx
+            listState.firstVisibleItemIndex + floor(fraction + wheelVisibleCount / 2.0).toInt()
         }
     }
 
@@ -565,11 +609,14 @@ private fun WheelPicker(
         modifier = modifier.height(wheelItemHeight * wheelVisibleCount),
         contentAlignment = Alignment.Center
     ) {
+        // No contentPadding needed: the virtual list is millions of items
+        // deep, so we never scroll near a real boundary, and skipping it
+        // avoids an edge-padding offset that was pushing the rendered
+        // rows out of alignment with the fixed highlight bar.
         LazyColumn(
             state = listState,
             flingBehavior = flingBehavior,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = wheelItemHeight * (wheelVisibleCount / 2))
+            modifier = Modifier.fillMaxWidth()
         ) {
             items(count = virtualCount) { virtualIndex ->
                 val value = values[virtualIndex % values.size]
@@ -619,10 +666,10 @@ private fun IconCircle(icon: ImageVector, contentDescription: String, onClick: (
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
-            .background(Ink900)
+            .background(Amber500.copy(alpha = 0.18f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(imageVector = icon, contentDescription = contentDescription, tint = Paper50, modifier = Modifier.size(16.dp))
+        Icon(imageVector = icon, contentDescription = contentDescription, tint = Amber500, modifier = Modifier.size(16.dp))
     }
 }

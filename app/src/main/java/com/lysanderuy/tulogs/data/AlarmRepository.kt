@@ -1,5 +1,6 @@
 package com.lysanderuy.tulogs.data
 
+import com.lysanderuy.tulogs.alarm.AlarmOccurrence
 import com.lysanderuy.tulogs.alarm.AlarmScheduler
 import com.lysanderuy.tulogs.data.local.Alarm
 import com.lysanderuy.tulogs.data.local.AlarmDao
@@ -17,16 +18,24 @@ class AlarmRepository @Inject constructor(
     suspend fun getAlarmById(id: Long): Alarm? = alarmDao.getAlarmById(id)
 
     suspend fun saveAlarm(alarm: Alarm) {
-        val id = if (alarm.id == 0L) alarmDao.insert(alarm) else {
-            alarmDao.update(alarm)
-            alarm.id
+        // A one-time alarm saved enabled rolls forward to its next occurrence
+        // if the picked date+time has already passed — matches stock
+        // alarm-clock behavior instead of refusing to save it.
+        val toPersist = if (alarm.isEnabled) AlarmOccurrence.rollToUpcoming(alarm) else alarm
+        val id = if (toPersist.id == 0L) alarmDao.insert(toPersist) else {
+            alarmDao.update(toPersist)
+            toPersist.id
         }
-        val saved = alarm.copy(id = id)
+        val saved = toPersist.copy(id = id)
         if (saved.isEnabled) alarmScheduler.scheduleAlarm(saved) else alarmScheduler.cancelAlarm(saved)
     }
 
     suspend fun setEnabled(alarm: Alarm, isEnabled: Boolean) {
-        val updated = alarm.copy(isEnabled = isEnabled)
+        val updated = if (isEnabled) {
+            AlarmOccurrence.rollToUpcoming(alarm).copy(isEnabled = true)
+        } else {
+            alarm.copy(isEnabled = false)
+        }
         alarmDao.update(updated)
         if (isEnabled) alarmScheduler.scheduleAlarm(updated) else alarmScheduler.cancelAlarm(updated)
     }
