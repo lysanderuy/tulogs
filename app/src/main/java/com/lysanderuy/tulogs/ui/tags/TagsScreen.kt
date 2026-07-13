@@ -101,7 +101,10 @@ private fun TagRow(
                 text = "Scan to register",
                 style = TuLogsType.captionText,
                 color = Mist600,
-                modifier = Modifier.clickable(onClick = onScanClick)
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable(onClick = onScanClick)
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
             )
         }
     }

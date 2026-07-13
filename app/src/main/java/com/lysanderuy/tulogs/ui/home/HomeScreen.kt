@@ -69,7 +69,8 @@ data class LastNightUiState(
     val bedtime: String,            // "11:02 PM"
     val wake: String,               // "6:24 AM"
     val qualityRating: Int,         // 1..5, from SleepLog.qualityRating
-    val screenOnAfterMinutes: Int?  // derived from screenOffTimestamp vs bedtimeTimestamp, nullable
+    val screenOnAfterMinutes: Int?, // derived from screenOffTimestamp vs bedtimeTimestamp, nullable
+    val duration: String            // "7h 42m" — derived from wakeTimestamp - bedtimeTimestamp
 )
 
 @Composable
@@ -207,6 +208,17 @@ private fun StatusEyebrow(label: String, confirmed: Boolean) {
 @Composable
 private fun LastNightFacts(lastNight: LastNightUiState) {
     Column {
+        Text(
+            text = buildAnnotatedString {
+                append("You got ")
+                withStyle(SpanStyle(color = Paper50, fontWeight = TuLogsType.statusHeadlineEmphasisWeight)) {
+                    append(lastNight.duration)
+                }
+                append(" last night.")
+            },
+            style = TuLogsType.captionText,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -359,21 +371,22 @@ private fun NavItem(label: String, icon: ImageVector, active: Boolean, onClick: 
 
 private val previewIdleState = HomeUiState(
     dateLabel = "TUE 14 JUL",
-    alarmTime = "6:30 AM",
+    alarmTime = "06:30",
     alarmDays = "Weekdays",
     isBedtimeLogged = false,
     bedtimeLoggedAt = null,
     lastNight = LastNightUiState(
-        bedtime = "11:02 PM",
-        wake = "6:24 AM",
+        bedtime = "23:02",
+        wake = "06:24",
         qualityRating = 4,
-        screenOnAfterMinutes = 32
+        screenOnAfterMinutes = 32,
+        duration = "7h 22m"
     )
 )
 
 private val previewSessionState = previewIdleState.copy(
     isBedtimeLogged = true,
-    bedtimeLoggedAt = "11:02 PM"
+    bedtimeLoggedAt = "23:02"
 )
 
 @Preview(name = "Home — before bed", showBackground = true, backgroundColor = 0xFF05070C)

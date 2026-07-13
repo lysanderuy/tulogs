@@ -16,6 +16,8 @@ class AlarmRingingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
 
+        val label = intent?.getStringExtra(EXTRA_LABEL).orEmpty()
+
         val fullScreenIntent = Intent(this, RingingActivity::class.java)
         fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
@@ -28,7 +30,7 @@ class AlarmRingingService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("TuLogs Alarm")
-            .setContentText("Alarm firing - tap to dismiss (placeholder)")
+            .setContentText(label.ifBlank { "Tap to dismiss" })
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -56,5 +58,6 @@ class AlarmRingingService : Service() {
     companion object {
         const val CHANNEL_ID = "alarm_channel"
         const val NOTIFICATION_ID = 1
+        const val EXTRA_LABEL = "extra_label"
     }
 }

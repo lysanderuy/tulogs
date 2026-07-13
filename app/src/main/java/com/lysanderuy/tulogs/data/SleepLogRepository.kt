@@ -14,10 +14,9 @@ class SleepLogRepository @Inject constructor(
         return sleepLogDao.insert(SleepLog(bedtimeTimestamp = bedtimeTimestamp))
     }
 
-    suspend fun endActiveSession(wakeTimestamp: Long) {
-        val active = sleepLogDao.getActiveSession()
-        if (active != null) {
-            sleepLogDao.update(active.copy(wakeTimestamp = wakeTimestamp))
-        }
+    suspend fun endActiveSession(wakeTimestamp: Long): Boolean {
+        val active = sleepLogDao.getActiveSession() ?: return false
+        sleepLogDao.update(active.copy(wakeTimestamp = wakeTimestamp))
+        return true
     }
 }
