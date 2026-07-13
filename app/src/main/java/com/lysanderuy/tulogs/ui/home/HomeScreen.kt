@@ -1,9 +1,11 @@
 package com.lysanderuy.tulogs.ui.home
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,9 +25,10 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import com.lysanderuy.tulogs.ui.theme.Amber500
 import com.lysanderuy.tulogs.ui.theme.Ink700
 import com.lysanderuy.tulogs.ui.theme.Ink800
-import com.lysanderuy.tulogs.ui.theme.Ink950
 import com.lysanderuy.tulogs.ui.theme.Mist600
 import com.lysanderuy.tulogs.ui.theme.Paper50
 import com.lysanderuy.tulogs.ui.theme.Periwinkle400
@@ -74,46 +76,38 @@ data class LastNightUiState(
 fun HomeScreen(
     uiState: HomeUiState,
     onSettingsClick: () -> Unit = {},
-    onDevToolsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        modifier = modifier,
-        containerColor = Ink950,
-        bottomBar = { HomeBottomNav() }
-    ) { innerPadding ->
-        Column(
+    LaunchedEffect(uiState.isBedtimeLogged) {
+        Log.d("NFC_PERF", "home_bedtime_logged=${uiState.isBedtimeLogged} t=${SystemClock.elapsedRealtime()}")
+    }
+
+    Column(
+        modifier = modifier.fillMaxSize()
+    ) {
+        HomeHeader(
+            dateLabel = uiState.dateLabel,
+            onSettingsClick = onSettingsClick
+        )
+
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(24.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
-            HomeHeader(
-                dateLabel = uiState.dateLabel,
-                onSettingsClick = onSettingsClick,
-                onDevToolsClick = onDevToolsClick
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(24.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                StatusBlock(uiState)
-            }
-
-            uiState.lastNight?.let { LastNightFacts(it) }
+            StatusBlock(uiState)
         }
+
+        uiState.lastNight?.let { LastNightFacts(it) }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HomeHeader(
     dateLabel: String,
-    onSettingsClick: () -> Unit,
-    onDevToolsClick: () -> Unit
+    onSettingsClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -130,7 +124,7 @@ private fun HomeHeader(
             modifier = Modifier
                 .size(24.dp)
                 .clip(CircleShape)
-                .combinedClickable(onClick = onSettingsClick, onLongClick = onDevToolsClick)
+                .clickable(onClick = onSettingsClick)
         )
     }
 }
@@ -289,13 +283,8 @@ private fun Modifier.horizontalHairlines(color: Color, thickness: Dp = 1.dp): Mo
     drawLine(color = color, start = Offset(0f, size.height), end = Offset(size.width, size.height), strokeWidth = strokeWidthPx)
 }
 
-/**
- * Bottom nav — kept local to this file for now since it's still being
- * finalized visually. Extract to its own composable + wire to the real
- * Jetpack Navigation Component graph once all four destinations exist.
- */
 @Composable
-private fun HomeBottomNav() {
+fun HomeBottomNav(currentRoute: String, onNavigate: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -303,16 +292,43 @@ private fun HomeBottomNav() {
             .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceAround
     ) {
-        NavItem(label = "Home", icon = Icons.Outlined.Home, active = true)
-        NavItem(label = "Alarms", icon = Icons.Outlined.AccessTime, active = false)
-        NavItem(label = "Tags", icon = Icons.Outlined.Sell, active = false)
-        NavItem(label = "Week", icon = Icons.Outlined.BarChart, active = false)
+        NavItem(
+            label = "Home",
+            icon = Icons.Outlined.Home,
+            active = currentRoute == "home",
+            onClick = { onNavigate("home") }
+        )
+        NavItem(
+            label = "Alarms",
+            icon = Icons.Outlined.AccessTime,
+            active = currentRoute == "alarms",
+            onClick = { onNavigate("alarms") }
+        )
+        NavItem(
+            label = "Tags",
+            icon = Icons.Outlined.Sell,
+            active = currentRoute == "tags",
+            onClick = { onNavigate("tags") }
+        )
+        NavItem(
+            label = "Week",
+            icon = Icons.Outlined.BarChart,
+            active = currentRoute == "week",
+            onClick = { onNavigate("week") }
+        )
     }
 }
 
 @Composable
-private fun NavItem(label: String, icon: ImageVector, active: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun NavItem(label: String, icon: ImageVector, active: Boolean, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
