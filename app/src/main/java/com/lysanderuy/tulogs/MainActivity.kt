@@ -3,13 +3,14 @@ package com.lysanderuy.tulogs
 import android.Manifest
 import android.app.AlarmManager
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
-import android.nfc.NfcAdapter
-import android.nfc.Tag
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -17,31 +18,42 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.TagType
+import com.lysanderuy.tulogs.nfc.NfcForegroundDispatcher
+import com.lysanderuy.tulogs.ui.home.HomeBottomNav
 import com.lysanderuy.tulogs.ui.home.HomeScreen
 import com.lysanderuy.tulogs.ui.home.HomeViewModel
+import com.lysanderuy.tulogs.ui.tags.TagsScreen
+import com.lysanderuy.tulogs.ui.tags.TagsViewModel
+import com.lysanderuy.tulogs.ui.theme.Ink950
 import com.lysanderuy.tulogs.ui.theme.TuLogsTheme
+import com.lysanderuy.tulogs.ui.theme.TuLogsType
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-enum class RegistrationMode { NONE, BEDTIME, WAKE }
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -55,16 +67,14 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
-    private var nfcAdapter: NfcAdapter? = null
+    private val nfcDispatcher by lazy { NfcForegroundDispatcher(this) }
 
-    private var registrationModeGetter: () -> RegistrationMode = { RegistrationMode.NONE }
+    private var registrationModeGetter: () -> TagType? = { null }
     private var onUidScanned: (String) -> Unit = {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -86,24 +96,84 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             TuLogsTheme {
-                var mode by remember { mutableStateOf(RegistrationMode.NONE) }
-                var lastUid by remember { mutableStateOf<String?>(null) }
-                var showDevTools by remember { mutableStateOf(false) }
+                val navController = rememberNavController()
+                val backStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = backStackEntry?.destination?.route ?: "home"
 
-                registrationModeGetter = { mode }
-                onUidScanned = { uid -> lastUid = uid }
+                Scaffold(
+                    containerColor = Ink950,
+                    bottomBar = {
+                        HomeBottomNav(
+                            currentRoute = currentRoute,
+                            onNavigate = { route ->
+                                navController.navigate(route) {
+                                    popUpTo("home") { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = "home",
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
+                        composable("home") {
+                            val homeViewModel: HomeViewModel by viewModels()
+                            val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+                            HomeScreen(uiState = uiState)
+                        }
+                        composable("tags") {
+                            val tagsViewModel: TagsViewModel by viewModels()
+                            val uiState by tagsViewModel.uiState.collectAsStateWithLifecycle()
+                            var registeringType by remember { mutableStateOf<TagType?>(null) }
+                            var awaitingConfirmation by remember { mutableStateOf<TagType?>(null) }
 
-                if (showDevTools) {
-                    DevToolsPanel(
-                        mode = mode,
-                        lastUid = lastUid,
-                        onModeChange = { mode = it },
-                        onBack = { showDevTools = false }
-                    )
-                } else {
-                    val homeViewModel: HomeViewModel by viewModels()
-                    val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
-                    HomeScreen(uiState = uiState, onDevToolsClick = { showDevTools = true })
+                            registrationModeGetter = { registeringType }
+                            onUidScanned = {
+                                awaitingConfirmation = registeringType
+                                registeringType = null
+                            }
+
+                            // awaitingConfirmation is separate from registeringType so the row keeps
+                            // showing feedback until uiState actually reflects the new UID, instead of
+                            // flipping back to idle the instant the tag is scanned but before the DB
+                            // write + Flow emission has caught up.
+                            LaunchedEffect(uiState, awaitingConfirmation) {
+                                val type = awaitingConfirmation ?: return@LaunchedEffect
+                                val confirmed = when (type) {
+                                    TagType.BEDTIME -> uiState.bedtimeUid != null
+                                    TagType.WAKE -> uiState.wakeUid != null
+                                }
+                                if (confirmed) awaitingConfirmation = null
+                            }
+
+                            // Navigating away from Tags must not leave a stale registration
+                            // mode active — e.g. Home's passive BEDTIME-scan-to-start-session
+                            // check relies on registrationModeGetter() returning null.
+                            DisposableEffect(Unit) {
+                                onDispose {
+                                    registrationModeGetter = { null }
+                                    onUidScanned = {}
+                                }
+                            }
+
+                            TagsScreen(
+                                uiState = uiState,
+                                registeringType = registeringType,
+                                awaitingConfirmation = awaitingConfirmation,
+                                onScanClick = { type -> registeringType = type }
+                            )
+                        }
+                        composable("alarms") {
+                            ComingSoonScreen()
+                        }
+                        composable("week") {
+                            ComingSoonScreen()
+                        }
+                    }
                 }
             }
         }
@@ -111,73 +181,72 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        val intent = Intent(this, javaClass).apply {
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
-        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_MUTABLE)
-        nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
+        nfcDispatcher.enable()
     }
 
     override fun onPause() {
         super.onPause()
-        nfcAdapter?.disableForegroundDispatch(this)
+        nfcDispatcher.disable()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.action == NfcAdapter.ACTION_TAG_DISCOVERED ||
-            intent.action == NfcAdapter.ACTION_TECH_DISCOVERED
-        ) {
-            val tag: Tag? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(NfcAdapter.EXTRA_TAG, Tag::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
-            }
-            tag?.let {
-                val uid = it.id.joinToString(":") { byte -> "%02X".format(byte) }
-                Log.d("NFC_TEST", "NFC tag scanned, UID: $uid")
-                onUidScanned(uid)
+        val uid = nfcDispatcher.readTagUid(intent) ?: return
+        Log.d("NFC_TEST", "NFC tag scanned, UID: $uid")
+        // elapsedRealtime() is monotonic and unaffected by wall-clock changes — required for
+        // measuring a round trip, unlike System.currentTimeMillis().
+        Log.d("NFC_PERF", "tag_detected uid=$uid t=${SystemClock.elapsedRealtime()}")
+        vibrateTagDetected()
+        // Capture the mode before onUidScanned runs — it resets registeringType synchronously.
+        val registrationMode = registrationModeGetter()
+        onUidScanned(uid)
 
-                when (registrationModeGetter()) {
-                    RegistrationMode.BEDTIME -> lifecycleScope.launch { sleepTagRepository.registerTag(uid, TagType.BEDTIME) }
-                    RegistrationMode.WAKE -> lifecycleScope.launch { sleepTagRepository.registerTag(uid, TagType.WAKE) }
-                    RegistrationMode.NONE -> {
-                        // Not in registration mode — check if this is a real BEDTIME tag scan to start a session
-                        lifecycleScope.launch {
-                            val bedtimeTag = sleepTagRepository.getTagByType(TagType.BEDTIME)
-                            if (bedtimeTag != null && bedtimeTag.uid == uid) {
-                                sleepLogRepository.startSession(System.currentTimeMillis())
-                                Log.d("NFC_TEST", "Sleep session started")
-                            }
-                        }
+        when (registrationMode) {
+            TagType.BEDTIME -> lifecycleScope.launch {
+                Log.d("NFC_PERF", "db_write_start type=BEDTIME t=${SystemClock.elapsedRealtime()}")
+                sleepTagRepository.registerTag(uid, TagType.BEDTIME)
+                Log.d("NFC_PERF", "db_write_done type=BEDTIME t=${SystemClock.elapsedRealtime()}")
+            }
+            TagType.WAKE -> lifecycleScope.launch {
+                Log.d("NFC_PERF", "db_write_start type=WAKE t=${SystemClock.elapsedRealtime()}")
+                sleepTagRepository.registerTag(uid, TagType.WAKE)
+                Log.d("NFC_PERF", "db_write_done type=WAKE t=${SystemClock.elapsedRealtime()}")
+            }
+            null -> {
+                // Not in registration mode — check if this is a real BEDTIME tag scan to start a session
+                lifecycleScope.launch {
+                    Log.d("NFC_PERF", "passive_check_start t=${SystemClock.elapsedRealtime()}")
+                    val bedtimeTag = sleepTagRepository.getTagByType(TagType.BEDTIME)
+                    if (bedtimeTag != null && bedtimeTag.uid == uid) {
+                        sleepLogRepository.startSession(System.currentTimeMillis())
+                        Log.d("NFC_TEST", "Sleep session started")
+                        Log.d("NFC_PERF", "session_started t=${SystemClock.elapsedRealtime()}")
                     }
                 }
             }
         }
     }
+
+    private fun vibrateTagDetected() {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(VibratorManager::class.java)
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Vibrator::class.java)
+        }
+        vibrator?.vibrate(VibrationEffect.createOneShot(40, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
 }
 
 @Composable
-private fun DevToolsPanel(
-    mode: RegistrationMode,
-    lastUid: String?,
-    onModeChange: (RegistrationMode) -> Unit,
-    onBack: () -> Unit
-) {
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            Button(onClick = onBack) {
-                Text("Back")
-            }
-            Text("Registration mode: ${mode.name}")
-            Text("Last scanned UID: ${lastUid ?: "none yet"}")
-            Button(onClick = { onModeChange(RegistrationMode.BEDTIME) }) {
-                Text("Register Bedtime Tag")
-            }
-            Button(onClick = { onModeChange(RegistrationMode.WAKE) }) {
-                Text("Register Wake Tag")
-            }
-        }
+private fun ComingSoonScreen(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Ink950),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = "Coming soon", style = TuLogsType.statusSub)
     }
 }
