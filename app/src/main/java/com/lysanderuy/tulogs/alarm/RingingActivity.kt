@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.local.TagType
 import dagger.hilt.android.AndroidEntryPoint
@@ -30,6 +31,9 @@ class RingingActivity : ComponentActivity() {
 
     @Inject
     lateinit var sleepTagRepository: SleepTagRepository
+
+    @Inject
+    lateinit var sleepLogRepository: SleepLogRepository
 
     private var nfcAdapter: NfcAdapter? = null
     private var onUidScanned: (String) -> Unit = {}
@@ -51,6 +55,7 @@ class RingingActivity : ComponentActivity() {
                     lifecycleScope.launch {
                         val savedWakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
                         if (savedWakeTag != null && savedWakeTag.uid == scannedUid) {
+                            sleepLogRepository.endActiveSession(System.currentTimeMillis())
                             status = "Dismissed!"
                             finish()
                         } else {

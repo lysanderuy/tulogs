@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.lysanderuy.tulogs.data.SleepTagRepository
+import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.TagType
 import com.lysanderuy.tulogs.ui.theme.TuLogsTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -42,6 +43,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var sleepTagRepository: SleepTagRepository
+
+    @Inject
+    lateinit var sleepLogRepository: SleepLogRepository
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -132,7 +136,16 @@ class MainActivity : ComponentActivity() {
                 when (registrationModeGetter()) {
                     RegistrationMode.BEDTIME -> lifecycleScope.launch { sleepTagRepository.registerTag(uid, TagType.BEDTIME) }
                     RegistrationMode.WAKE -> lifecycleScope.launch { sleepTagRepository.registerTag(uid, TagType.WAKE) }
-                    RegistrationMode.NONE -> {}
+                    RegistrationMode.NONE -> {
+                        // Not in registration mode — check if this is a real BEDTIME tag scan to start a session
+                        lifecycleScope.launch {
+                            val bedtimeTag = sleepTagRepository.getTagByType(TagType.BEDTIME)
+                            if (bedtimeTag != null && bedtimeTag.uid == uid) {
+                                sleepLogRepository.startSession(System.currentTimeMillis())
+                                Log.d("NFC_TEST", "Sleep session started")
+                            }
+                        }
+                    }
                 }
             }
         }

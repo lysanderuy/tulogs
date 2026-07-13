@@ -24,7 +24,9 @@ object DatabaseModule {
             context,
             TuLogsDatabase::class.java,
             "tulogs.db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
