@@ -28,19 +28,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
-import com.lysanderuy.tulogs.data.TagPreferences
+import com.lysanderuy.tulogs.data.SleepTagRepository
+import com.lysanderuy.tulogs.data.local.TagType
 import com.lysanderuy.tulogs.ui.theme.TuLogsTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 enum class RegistrationMode { NONE, BEDTIME, WAKE }
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var sleepTagRepository: SleepTagRepository
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private var nfcAdapter: NfcAdapter? = null
-    private lateinit var tagPreferences: TagPreferences
 
     private var registrationModeGetter: () -> RegistrationMode = { RegistrationMode.NONE }
     private var onUidScanned: (String) -> Unit = {}
@@ -50,7 +56,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        tagPreferences = TagPreferences(this)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -125,8 +130,8 @@ class MainActivity : ComponentActivity() {
                 onUidScanned(uid)
 
                 when (registrationModeGetter()) {
-                    RegistrationMode.BEDTIME -> lifecycleScope.launch { tagPreferences.setBedtimeTag(uid) }
-                    RegistrationMode.WAKE -> lifecycleScope.launch { tagPreferences.setWakeTag(uid) }
+                    RegistrationMode.BEDTIME -> lifecycleScope.launch { sleepTagRepository.registerTag(uid, TagType.BEDTIME) }
+                    RegistrationMode.WAKE -> lifecycleScope.launch { sleepTagRepository.registerTag(uid, TagType.WAKE) }
                     RegistrationMode.NONE -> {}
                 }
             }

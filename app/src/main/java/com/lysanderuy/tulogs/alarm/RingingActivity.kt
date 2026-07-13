@@ -18,15 +18,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.lysanderuy.tulogs.data.TagPreferences
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
+import com.lysanderuy.tulogs.data.SleepTagRepository
+import com.lysanderuy.tulogs.data.local.TagType
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class RingingActivity : ComponentActivity() {
 
+    @Inject
+    lateinit var sleepTagRepository: SleepTagRepository
+
     private var nfcAdapter: NfcAdapter? = null
-    private lateinit var tagPreferences: TagPreferences
     private var onUidScanned: (String) -> Unit = {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,15 +43,14 @@ class RingingActivity : ComponentActivity() {
         }
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        tagPreferences = TagPreferences(this)
 
         setContent {
             MaterialTheme {
                 var status by remember { mutableStateOf("Tap your Wake tag to dismiss") }
                 onUidScanned = { scannedUid ->
                     lifecycleScope.launch {
-                        val savedWakeUid = tagPreferences.wakeTagUid.first()
-                        if (savedWakeUid != null && savedWakeUid == scannedUid) {
+                        val savedWakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
+                        if (savedWakeTag != null && savedWakeTag.uid == scannedUid) {
                             status = "Dismissed!"
                             finish()
                         } else {
