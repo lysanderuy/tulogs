@@ -16,21 +16,26 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.TagType
+import com.lysanderuy.tulogs.ui.home.HomeScreen
+import com.lysanderuy.tulogs.ui.home.HomeViewModel
 import com.lysanderuy.tulogs.ui.theme.TuLogsTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -83,21 +88,22 @@ class MainActivity : ComponentActivity() {
             TuLogsTheme {
                 var mode by remember { mutableStateOf(RegistrationMode.NONE) }
                 var lastUid by remember { mutableStateOf<String?>(null) }
+                var showDevTools by remember { mutableStateOf(false) }
 
                 registrationModeGetter = { mode }
                 onUidScanned = { uid -> lastUid = uid }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(modifier = Modifier.padding(innerPadding)) {
-                        Text("Registration mode: ${mode.name}")
-                        Text("Last scanned UID: ${lastUid ?: "none yet"}")
-                        Button(onClick = { mode = RegistrationMode.BEDTIME }) {
-                            Text("Register Bedtime Tag")
-                        }
-                        Button(onClick = { mode = RegistrationMode.WAKE }) {
-                            Text("Register Wake Tag")
-                        }
-                    }
+                if (showDevTools) {
+                    DevToolsPanel(
+                        mode = mode,
+                        lastUid = lastUid,
+                        onModeChange = { mode = it },
+                        onBack = { showDevTools = false }
+                    )
+                } else {
+                    val homeViewModel: HomeViewModel by viewModels()
+                    val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
+                    HomeScreen(uiState = uiState, onDevToolsClick = { showDevTools = true })
                 }
             }
         }
@@ -147,6 +153,30 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DevToolsPanel(
+    mode: RegistrationMode,
+    lastUid: String?,
+    onModeChange: (RegistrationMode) -> Unit,
+    onBack: () -> Unit
+) {
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        Column(modifier = Modifier.padding(innerPadding)) {
+            Button(onClick = onBack) {
+                Text("Back")
+            }
+            Text("Registration mode: ${mode.name}")
+            Text("Last scanned UID: ${lastUid ?: "none yet"}")
+            Button(onClick = { onModeChange(RegistrationMode.BEDTIME) }) {
+                Text("Register Bedtime Tag")
+            }
+            Button(onClick = { onModeChange(RegistrationMode.WAKE) }) {
+                Text("Register Wake Tag")
             }
         }
     }
