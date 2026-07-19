@@ -170,7 +170,9 @@ class MainActivity : ComponentActivity() {
                                 uiState = uiState,
                                 registeringType = registeringType,
                                 awaitingConfirmation = awaitingConfirmation,
-                                onScanClick = { type -> registeringType = type }
+                                onScanClick = { type ->
+                                    registeringType = if (registeringType == type) null else type
+                                }
                             )
                         }
                         composable("alarms") {
