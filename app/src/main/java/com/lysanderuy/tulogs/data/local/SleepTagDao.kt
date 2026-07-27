@@ -16,9 +16,9 @@ interface SleepTagDao {
     @Delete
     suspend fun delete(tag: SleepTag)
 
-    @Query("SELECT * FROM sleep_tags WHERE type = :type LIMIT 1")
-    suspend fun getTagByType(type: TagType): SleepTag?
+    @Query("SELECT * FROM sleep_tags WHERE type = :type AND userId = :userId LIMIT 1")
+    suspend fun getTagByType(type: TagType, userId: String): SleepTag?
 
-    @Query("SELECT * FROM sleep_tags")
-    fun getAllTags(): Flow<List<SleepTag>>
+    @Query("SELECT * FROM sleep_tags WHERE userId = :userId")
+    fun getAllTags(userId: String): Flow<List<SleepTag>>
 }

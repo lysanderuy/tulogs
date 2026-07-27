@@ -9,7 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.ZonedDateTime
 import javax.inject.Inject
 
-class AlarmScheduler @Inject constructor(@ApplicationContext private val context: Context) {
+class AlarmScheduler @Inject constructor(@param:ApplicationContext private val context: Context) {
 
     private val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 

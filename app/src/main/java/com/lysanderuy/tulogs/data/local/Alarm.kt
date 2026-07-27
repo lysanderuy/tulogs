@@ -14,6 +14,7 @@ import java.time.LocalDate
 data class Alarm(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val userId: String = "",
     val hour: Int,
     val minute: Int,
     val isEnabled: Boolean = true,

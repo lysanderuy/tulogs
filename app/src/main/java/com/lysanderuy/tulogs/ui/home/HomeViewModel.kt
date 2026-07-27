@@ -3,9 +3,9 @@ package com.lysanderuy.tulogs.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lysanderuy.tulogs.alarm.AlarmOccurrence
+import com.lysanderuy.tulogs.data.AlarmRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.Alarm
-import com.lysanderuy.tulogs.data.local.AlarmDao
 import com.lysanderuy.tulogs.data.local.SleepLog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.DayOfWeek
@@ -18,6 +18,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 private val dateLabelFormatter = DateTimeFormatter.ofPattern("EEE d MMM")
@@ -26,12 +27,12 @@ private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     sleepLogRepository: SleepLogRepository,
-    alarmDao: AlarmDao
+    alarmRepository: AlarmRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<HomeUiState> = combine(
         sleepLogRepository.allLogs,
-        alarmDao.getEnabledAlarms()
+        alarmRepository.allAlarms.map { alarms -> alarms.filter { it.isEnabled } }
     ) { logs, alarms ->
         buildUiState(logs, alarms)
     }.stateIn(

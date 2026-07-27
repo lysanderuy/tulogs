@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -46,9 +47,14 @@ import com.lysanderuy.tulogs.data.local.TagType
 import com.lysanderuy.tulogs.nfc.NfcForegroundDispatcher
 import com.lysanderuy.tulogs.ui.alarms.AlarmsScreen
 import com.lysanderuy.tulogs.ui.alarms.AlarmsViewModel
+import com.lysanderuy.tulogs.ui.auth.AuthScreen
+import com.lysanderuy.tulogs.ui.auth.AuthSessionState
+import com.lysanderuy.tulogs.ui.auth.AuthViewModel
 import com.lysanderuy.tulogs.ui.home.HomeBottomNav
 import com.lysanderuy.tulogs.ui.home.HomeScreen
 import com.lysanderuy.tulogs.ui.home.HomeViewModel
+import com.lysanderuy.tulogs.ui.settings.SettingsScreen
+import com.lysanderuy.tulogs.ui.settings.SettingsViewModel
 import com.lysanderuy.tulogs.ui.tags.TagsScreen
 import com.lysanderuy.tulogs.ui.tags.TagsViewModel
 import com.lysanderuy.tulogs.ui.theme.Ink950
@@ -106,19 +112,38 @@ class MainActivity : ComponentActivity() {
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route ?: "home"
 
+                val authViewModel: AuthViewModel by viewModels()
+                val authState by authViewModel.authState.collectAsStateWithLifecycle()
+
+                LaunchedEffect(authState) {
+                    when (authState) {
+                        AuthSessionState.Loading -> Unit
+                        AuthSessionState.SignedOut -> navController.navigate("auth") {
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                        }
+                        is AuthSessionState.SignedIn -> if (currentRoute == "auth") {
+                            navController.navigate("home") {
+                                popUpTo("auth") { inclusive = true }
+                            }
+                        }
+                    }
+                }
+
                 Scaffold(
                     containerColor = Ink950,
                     bottomBar = {
-                        HomeBottomNav(
-                            currentRoute = currentRoute,
-                            onNavigate = { route ->
-                                navController.navigate(route) {
-                                    popUpTo("home") { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
+                        if (currentRoute != "auth" && currentRoute != "settings") {
+                            HomeBottomNav(
+                                currentRoute = currentRoute,
+                                onNavigate = { route ->
+                                    navController.navigate(route) {
+                                        popUpTo("home") { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 ) { innerPadding ->
                     NavHost(
@@ -126,10 +151,28 @@ class MainActivity : ComponentActivity() {
                         startDestination = "home",
                         modifier = Modifier.padding(innerPadding)
                     ) {
+                        composable("auth") {
+                            val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
+                            AuthScreen(
+                                uiState = uiState,
+                                onSignIn = authViewModel::signIn,
+                                onSignUp = authViewModel::signUp,
+                                onModeToggle = authViewModel::onModeToggle
+                            )
+                        }
                         composable("home") {
                             val homeViewModel: HomeViewModel by viewModels()
                             val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
-                            HomeScreen(uiState = uiState)
+                            HomeScreen(uiState = uiState, onSettingsClick = { navController.navigate("settings") })
+                        }
+                        composable("settings") {
+                            val settingsViewModel: SettingsViewModel by viewModels()
+                            val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
+                            SettingsScreen(
+                                uiState = uiState,
+                                onBack = { navController.popBackStack() },
+                                onSignOut = settingsViewModel::signOut
+                            )
                         }
                         composable("tags") {
                             val tagsViewModel: TagsViewModel by viewModels()

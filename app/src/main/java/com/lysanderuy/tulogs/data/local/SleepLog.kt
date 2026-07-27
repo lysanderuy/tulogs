@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class SleepLog(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val userId: String,
     val bedtimeTimestamp: Long,
     val wakeTimestamp: Long? = null,
     val screenOffTimestamp: Long? = null,

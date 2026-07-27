@@ -90,8 +90,6 @@ fun TagsScreen(
 
         Spacer(modifier = Modifier.weight(1f, fill = true))
 
-        // Dev-only: raw UIDs aren't meaningful to end users, but seeing exactly
-        // which physical tag got scanned is the fastest way to debug registration.
         Column(modifier = Modifier.padding(bottom = 16.dp)) {
             Text(
                 text = "BEDTIME ${uiState.bedtimeUid ?: "—"}",
