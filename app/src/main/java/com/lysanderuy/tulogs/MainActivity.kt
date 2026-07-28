@@ -161,8 +161,7 @@ class MainActivity : ComponentActivity() {
                             val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
                             HomeScreen(
                                 uiState = uiState,
-                                onSettingsClick = { navController.navigate("settings") },
-                                onStopTracking = { lifecycleScope.launch { endSessionAndStopTracking() } }
+                                onSettingsClick = { navController.navigate("settings") }
                             )
                         }
                         composable("settings") {

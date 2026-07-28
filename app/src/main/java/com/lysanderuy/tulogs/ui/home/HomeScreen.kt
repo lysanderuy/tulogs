@@ -73,7 +73,6 @@ data class LastNightUiState(
 fun HomeScreen(
     uiState: HomeUiState,
     onSettingsClick: () -> Unit = {},
-    onStopTracking: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(uiState.isBedtimeLogged) {
@@ -95,7 +94,7 @@ fun HomeScreen(
                 .padding(24.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            StatusBlock(uiState, onStopTracking)
+            StatusBlock(uiState)
         }
 
         uiState.lastNight?.let { LastNightFacts(it) }
@@ -129,7 +128,7 @@ private fun HomeHeader(
 
 // copy changes with state, not just color — a countdown after the bedtime tap would be misleading
 @Composable
-private fun StatusBlock(uiState: HomeUiState, onStopTracking: () -> Unit) {
+private fun StatusBlock(uiState: HomeUiState) {
     Column {
         StatusEyebrow(
             label = if (uiState.isBedtimeLogged) "Bedtime logged" else "Tonight",
@@ -161,20 +160,6 @@ private fun StatusBlock(uiState: HomeUiState, onStopTracking: () -> Unit) {
             "${uiState.alarmDays} · nothing else to do yet"
         }
         Text(text = sub, style = TuLogsType.statusSub)
-
-        if (uiState.isBedtimeLogged) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Stop tracking",
-                style = TuLogsType.monoLabel,
-                color = Periwinkle400,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onStopTracking
-                )
-            )
-        }
     }
 }
 
