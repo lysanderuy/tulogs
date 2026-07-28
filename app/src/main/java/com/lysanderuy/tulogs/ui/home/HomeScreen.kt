@@ -51,11 +51,7 @@ import com.lysanderuy.tulogs.ui.theme.Periwinkle400
 import com.lysanderuy.tulogs.ui.theme.TuLogsTheme
 import com.lysanderuy.tulogs.ui.theme.TuLogsType
 
-/**
- * Home screen UI state. Owned by HomeViewModel in the real app — this file
- * only defines the shape, so the composable stays previewable/testable
- * without needing Hilt or Room wired up.
- */
+// shape lives here, HomeViewModel owns it — keeps this file previewable without Hilt/Room
 data class HomeUiState(
     val dateLabel: String,          // "TUE 14 JUL"
     val alarmTime: String,          // "6:30 AM"
@@ -77,6 +73,7 @@ data class LastNightUiState(
 fun HomeScreen(
     uiState: HomeUiState,
     onSettingsClick: () -> Unit = {},
+    onStopTracking: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(uiState.isBedtimeLogged) {
@@ -98,7 +95,7 @@ fun HomeScreen(
                 .padding(24.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            StatusBlock(uiState)
+            StatusBlock(uiState, onStopTracking)
         }
 
         uiState.lastNight?.let { LastNightFacts(it) }
@@ -130,14 +127,9 @@ private fun HomeHeader(
     }
 }
 
-/**
- * The one honest sentence on Home. Content — not just color — changes with
- * state: showing a countdown *after* the bedtime tap would be misleading,
- * so "before bed" and "during sleep" are genuinely different copy, not a
- * reskinned version of the same string.
- */
+// copy changes with state, not just color — a countdown after the bedtime tap would be misleading
 @Composable
-private fun StatusBlock(uiState: HomeUiState) {
+private fun StatusBlock(uiState: HomeUiState, onStopTracking: () -> Unit) {
     Column {
         StatusEyebrow(
             label = if (uiState.isBedtimeLogged) "Bedtime logged" else "Tonight",
@@ -169,15 +161,24 @@ private fun StatusBlock(uiState: HomeUiState) {
             "${uiState.alarmDays} · nothing else to do yet"
         }
         Text(text = sub, style = TuLogsType.statusSub)
+
+        if (uiState.isBedtimeLogged) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Stop tracking",
+                style = TuLogsType.monoLabel,
+                color = Periwinkle400,
+                modifier = Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onStopTracking
+                )
+            )
+        }
     }
 }
 
-/**
- * Subtle status signal — hollow ring while waiting, filled amber (with a
- * soft glow) once confirmed. Deliberately just a dot, not an icon: it
- * reuses the same visual language as the quality dots below rather than
- * introducing new decorative artwork.
- */
+// just a dot, not an icon — matches the quality dots down in LastNightFacts
 @Composable
 private fun StatusEyebrow(label: String, confirmed: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -201,10 +202,7 @@ private fun StatusEyebrow(label: String, confirmed: Boolean) {
     }
 }
 
-/**
- * Plain facts from last night — no framing as good/bad, just what happened.
- * Pulled from the most recently completed SleepLog row.
- */
+// no good/bad framing, just what happened — pulled from the last completed SleepLog
 @Composable
 private fun LastNightFacts(lastNight: LastNightUiState) {
     Column {
@@ -284,11 +282,7 @@ private fun qualityDots(rating: Int, total: Int = 5): String {
     return filled + empty
 }
 
-/**
- * Top + bottom hairlines only — a full box border reads as a floating card
- * whose side edges look arbitrary against the full-bleed layout on wider
- * screens. Full-width top/bottom rules read as section dividers instead.
- */
+// top/bottom only — a full border looks like a floating card on wider screens
 private fun Modifier.horizontalHairlines(color: Color, thickness: Dp = 1.dp): Modifier = drawBehind {
     val strokeWidthPx = thickness.toPx()
     drawLine(color = color, start = Offset(0f, 0f), end = Offset(size.width, 0f), strokeWidth = strokeWidthPx)

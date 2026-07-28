@@ -40,7 +40,13 @@ class SleepLogRepository @Inject constructor(
     suspend fun endActiveSession(wakeTimestamp: Long): Boolean {
         val userId = authRepository.currentUserId ?: return false
         val active = sleepLogDao.getActiveSession(userId) ?: return false
-        sleepLogDao.update(active.copy(wakeTimestamp = wakeTimestamp))
+        sleepLogDao.setWakeTimestamp(active.id, wakeTimestamp)
         return true
+    }
+
+    suspend fun recordScreenOff(timestamp: Long): Boolean {
+        val userId = authRepository.currentUserId ?: return false
+        val active = sleepLogDao.getActiveSession(userId) ?: return false
+        return sleepLogDao.setScreenOffTimestampIfUnset(active.id, timestamp) > 0
     }
 }

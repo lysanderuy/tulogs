@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -13,8 +12,11 @@ interface SleepLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(log: SleepLog): Long
 
-    @Update
-    suspend fun update(log: SleepLog)
+    @Query("UPDATE sleep_logs SET wakeTimestamp = :wakeTimestamp WHERE id = :id")
+    suspend fun setWakeTimestamp(id: Long, wakeTimestamp: Long)
+
+    @Query("UPDATE sleep_logs SET screenOffTimestamp = :screenOffTimestamp WHERE id = :id AND screenOffTimestamp IS NULL")
+    suspend fun setScreenOffTimestampIfUnset(id: Long, screenOffTimestamp: Long): Int
 
     @Query("SELECT * FROM sleep_logs WHERE userId = :userId ORDER BY bedtimeTimestamp DESC")
     fun getAllLogs(userId: String): Flow<List<SleepLog>>
