@@ -16,12 +16,12 @@ interface SleepLogDao {
     @Update
     suspend fun update(log: SleepLog)
 
-    @Query("SELECT * FROM sleep_logs ORDER BY bedtimeTimestamp DESC")
-    fun getAllLogs(): Flow<List<SleepLog>>
+    @Query("SELECT * FROM sleep_logs WHERE userId = :userId ORDER BY bedtimeTimestamp DESC")
+    fun getAllLogs(userId: String): Flow<List<SleepLog>>
 
-    @Query("SELECT * FROM sleep_logs WHERE wakeTimestamp IS NULL ORDER BY bedtimeTimestamp DESC LIMIT 1")
-    suspend fun getActiveSession(): SleepLog?
+    @Query("SELECT * FROM sleep_logs WHERE userId = :userId AND wakeTimestamp IS NULL ORDER BY bedtimeTimestamp DESC LIMIT 1")
+    suspend fun getActiveSession(userId: String): SleepLog?
 
-    @Query("SELECT * FROM sleep_logs WHERE id = :id")
-    suspend fun getLogById(id: Long): SleepLog?
+    @Query("SELECT * FROM sleep_logs WHERE id = :id AND userId = :userId")
+    suspend fun getLogById(id: Long, userId: String): SleepLog?
 }

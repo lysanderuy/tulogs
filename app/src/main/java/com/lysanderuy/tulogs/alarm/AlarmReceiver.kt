@@ -3,6 +3,7 @@ package com.lysanderuy.tulogs.alarm
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.lysanderuy.tulogs.data.AuthRepository
 import com.lysanderuy.tulogs.data.local.AlarmDao
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -19,6 +20,9 @@ class AlarmReceiver : BroadcastReceiver() {
     @Inject
     lateinit var alarmScheduler: AlarmScheduler
 
+    @Inject
+    lateinit var authRepository: AuthRepository
+
     override fun onReceive(context: Context, intent: Intent) {
         val alarmId = intent.getLongExtra(AlarmScheduler.EXTRA_ALARM_ID, -1L)
         if (alarmId == -1L) return
@@ -26,7 +30,12 @@ class AlarmReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val alarm = alarmDao.getAlarmById(alarmId)
+                // Only ring for an alarm that still belongs to the currently signed-in
+                // user — this returns null both when signed out and when the alarm
+                // belongs to a different account that was previously signed in on
+                // this device.
+                val userId = authRepository.currentUserId
+                val alarm = userId?.let { alarmDao.getAlarmById(alarmId, it) }
                 if (alarm != null) {
                     if (alarm.daysOfWeek.isNotEmpty()) {
                         alarmScheduler.scheduleAlarm(alarm, skipToday = true)

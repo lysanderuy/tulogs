@@ -6,10 +6,11 @@ import androidx.room.PrimaryKey
 
 enum class TagType { BEDTIME, WAKE }
 
-@Entity(tableName = "sleep_tags", indices = [Index(value = ["type"], unique = true)])
+@Entity(tableName = "sleep_tags", indices = [Index(value = ["userId", "type"], unique = true)])
 data class SleepTag(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val userId: String,
     val uid: String,
     val type: TagType
 )

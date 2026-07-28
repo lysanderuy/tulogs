@@ -25,7 +25,7 @@ object DatabaseModule {
             TuLogsDatabase::class.java,
             "tulogs.db"
         )
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
     }
 
