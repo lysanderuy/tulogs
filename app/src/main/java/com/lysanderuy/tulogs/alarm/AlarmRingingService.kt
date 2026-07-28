@@ -20,6 +20,7 @@ class AlarmRingingService : Service() {
 
         val fullScreenIntent = Intent(this, RingingActivity::class.java)
         fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        fullScreenIntent.putExtra(RingingActivity.EXTRA_LABEL, label)
 
         val fullScreenPendingIntent = PendingIntent.getActivity(
             this,
@@ -30,7 +31,7 @@ class AlarmRingingService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("TuLogs Alarm")
-            .setContentText(label.ifBlank { "Tap to dismiss" })
+            .setContentText(label.ifBlank { "Alarm ringing" })
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
