@@ -2,6 +2,8 @@ package com.lysanderuy.tulogs.data
 
 import com.lysanderuy.tulogs.data.local.SleepLog
 import com.lysanderuy.tulogs.data.local.SleepLogDao
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +17,19 @@ class SleepLogRepository @Inject constructor(
 ) {
     val allLogs: Flow<List<SleepLog>> = authRepository.currentUserIdFlow.flatMapLatest { userId ->
         if (userId == null) flowOf(emptyList()) else sleepLogDao.getAllLogs(userId)
+    }
+
+    fun recentLogs(windowDays: Long = 7): Flow<List<SleepLog>> = authRepository.currentUserIdFlow.flatMapLatest { userId ->
+        if (userId == null) {
+            flowOf(emptyList())
+        } else {
+            val since = LocalDate.now(ZoneId.systemDefault())
+                .minusDays(windowDays - 1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+            sleepLogDao.getLogsSince(userId, since)
+        }
     }
 
     suspend fun startSession(bedtimeTimestamp: Long): Long {

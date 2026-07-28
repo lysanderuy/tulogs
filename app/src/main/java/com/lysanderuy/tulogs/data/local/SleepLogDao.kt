@@ -24,4 +24,7 @@ interface SleepLogDao {
 
     @Query("SELECT * FROM sleep_logs WHERE id = :id AND userId = :userId")
     suspend fun getLogById(id: Long, userId: String): SleepLog?
+
+    @Query("SELECT * FROM sleep_logs WHERE userId = :userId AND bedtimeTimestamp >= :since ORDER BY bedtimeTimestamp ASC")
+    fun getLogsSince(userId: String, since: Long): Flow<List<SleepLog>>
 }

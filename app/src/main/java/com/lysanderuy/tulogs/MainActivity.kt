@@ -18,20 +18,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -59,7 +53,8 @@ import com.lysanderuy.tulogs.ui.tags.TagsScreen
 import com.lysanderuy.tulogs.ui.tags.TagsViewModel
 import com.lysanderuy.tulogs.ui.theme.Ink950
 import com.lysanderuy.tulogs.ui.theme.TuLogsTheme
-import com.lysanderuy.tulogs.ui.theme.TuLogsType
+import com.lysanderuy.tulogs.ui.week.WeekScreen
+import com.lysanderuy.tulogs.ui.week.WeekViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -229,7 +224,9 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("week") {
-                            ComingSoonScreen()
+                            val weekViewModel: WeekViewModel by viewModels()
+                            val uiState by weekViewModel.uiState.collectAsStateWithLifecycle()
+                            WeekScreen(uiState = uiState)
                         }
                     }
                 }
@@ -303,17 +300,5 @@ class MainActivity : ComponentActivity() {
             getSystemService(Vibrator::class.java)
         }
         vibrator?.vibrate(VibrationEffect.createOneShot(40, VibrationEffect.DEFAULT_AMPLITUDE))
-    }
-}
-
-@Composable
-private fun ComingSoonScreen(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Ink950),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = "Coming soon", style = TuLogsType.statusSub)
     }
 }
