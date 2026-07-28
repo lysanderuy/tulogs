@@ -3,6 +3,9 @@ package com.lysanderuy.tulogs.di
 import android.content.Context
 import androidx.room.Room
 import com.lysanderuy.tulogs.data.local.AlarmDao
+import com.lysanderuy.tulogs.data.local.MIGRATION_1_2
+import com.lysanderuy.tulogs.data.local.MIGRATION_2_4
+import com.lysanderuy.tulogs.data.local.MIGRATION_4_5
 import com.lysanderuy.tulogs.data.local.SleepLogDao
 import com.lysanderuy.tulogs.data.local.SleepTagDao
 import com.lysanderuy.tulogs.data.local.TuLogsDatabase
@@ -25,7 +28,7 @@ object DatabaseModule {
             TuLogsDatabase::class.java,
             "tulogs.db"
         )
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_4_5)
             .build()
     }
 
