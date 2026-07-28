@@ -344,9 +344,7 @@ private fun NavItem(label: String, icon: ImageVector, active: Boolean, onClick: 
     }
 }
 
-// ---------------------------------------------------------------------
-// Previews — render instantly in Android Studio, no emulator required.
-// ---------------------------------------------------------------------
+// Previews — render instantly in Android Studio, no emulator required
 
 private val previewIdleState = HomeUiState(
     dateLabel = "TUE 14 JUL",

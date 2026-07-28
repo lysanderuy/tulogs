@@ -12,10 +12,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 
-/**
- * Transparent entry point for NFC tag scans when the app is not in the foreground.
- * Foreground dispatch in [com.lysanderuy.tulogs.MainActivity] takes priority while the app is open.
- */
+// Entry point for NFC scans when the app isn't foregrounded; MainActivity's dispatch takes priority while open
 @AndroidEntryPoint
 class NfcDispatchActivity : ComponentActivity() {
 

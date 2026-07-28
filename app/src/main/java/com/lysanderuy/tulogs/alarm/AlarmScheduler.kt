@@ -26,11 +26,7 @@ class AlarmScheduler @Inject constructor(@param:ApplicationContext private val c
         alarmManager.cancel(alarmPendingIntent(alarm))
     }
 
-    /**
-     * Same construction used for both scheduling and cancelling an alarm's
-     * PendingIntent — request code and extras must match exactly or
-     * alarmManager.cancel() silently no-ops instead of cancelling.
-     */
+    // Must match the scheduling call exactly, or alarmManager.cancel() silently no-ops
     private fun alarmPendingIntent(alarm: Alarm): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_ALARM_ID, alarm.id)

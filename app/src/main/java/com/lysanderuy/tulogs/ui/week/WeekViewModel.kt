@@ -18,9 +18,7 @@ import kotlinx.coroutines.flow.stateIn
 
 private const val windowDays = 7L
 
-// Fixed reference (not the week's own min/max) so bar heights stay
-// comparable across different weeks instead of rescaling per load, which
-// would draw a short night as a "full" bar.
+// Fixed reference so bar heights are comparable across weeks instead of rescaling per load
 private const val maxReferenceDurationMillis = 12L * 60 * 60 * 1000
 
 private val rangeDateFormatter = DateTimeFormatter.ofPattern("d MMM")
@@ -118,13 +116,7 @@ class WeekViewModel @Inject constructor(
         }
     }
 
-    // Same-day sessions (e.g. a nap plus that night's real sleep) collapse to one
-    // row, so naps are intentionally invisible on this screen — the longest
-    // session wins rather than whichever was logged last, so a short nap never
-    // overwrites the real night's duration. An in-progress session always wins
-    // over a completed one for the same day, since it's the current story for
-    // that date. Ties (equal duration) fall back to the earlier bedtime so the
-    // result never depends on list order.
+    // Same-day sessions collapse to one row: longest wins, in-progress beats completed, ties break on earlier bedtime
     private fun pickPrimarySession(logsForDate: List<SleepLog>): SleepLog {
         return logsForDate.reduce { best, candidate ->
             val bestDuration = best.wakeTimestamp?.let { it - best.bedtimeTimestamp }

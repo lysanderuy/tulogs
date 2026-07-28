@@ -10,32 +10,8 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.lysanderuy.tulogs.R
 
-/**
- * TuLogs type tokens.
- *
- * Two families used with restraint, plus one supporting mono:
- *  - Outfit            → the one thing you're meant to actually read at a glance
- *                         (headline status text, big numbers). Rounded, upright,
- *                         no thin hairlines — chosen specifically to stay legible
- *                         to someone half-asleep.
- *  - Plus Jakarta Sans  → body/UI text, nav labels.
- *  - IBM Plex Mono      → small supporting labels only (date stamp, BEDTIME /
- *                         WAKE / QUALITY labels). Never used for full sentences.
- *
- * Fonts are wired via the Downloadable Fonts API (Google Play Services),
- * so no .ttf files need to be bundled into the APK and no extra runtime
- * permission is required — consistent with the app's minimal-permissions
- * principle.
- *
- * SETUP REQUIRED (one-time):
- * 1. Add the dependency:
- *      implementation("androidx.compose.ui:ui-text-google-fonts:<version matching your Compose BOM>")
- * 2. Add res/values/font_certs.xml containing the standard
- *    `com_google_android_gms_fonts_certs` array — copy this verbatim from
- *    Android's official Downloadable Fonts guide, don't hand-type it:
- *    https://developer.android.com/develop/ui/compose/text/fonts#downloadable-fonts
- */
-
+// Outfit = glanceable headline text, Plus Jakarta Sans = body, IBM Plex Mono = short labels only
+// Fonts load via Google Play Services' Downloadable Fonts API — needs res/values/font_certs.xml, see Android's Downloadable Fonts guide
 private val fontProvider = GoogleFont.Provider(
     providerAuthority = "com.google.android.gms.fonts",
     providerPackage = "com.google.android.gms",
@@ -64,14 +40,10 @@ val MonoFamily = FontFamily(
     googleFont("IBM Plex Mono", FontWeight.Medium)
 )
 
-/**
- * Named text styles used directly by screens — mirrors the CSS approach
- * (design tokens as named constants) rather than overriding Material's
- * default type scale, since most of the app's UI is custom-styled.
- */
+// Named text styles used directly by screens, like CSS design tokens, instead of Material's default type scale
 object TuLogsType {
 
-    /** BEDTIME / WAKE / QUALITY / date-stamp labels — always short, never a sentence. */
+    // BEDTIME / WAKE / QUALITY / date-stamp labels — always short, never a sentence
     val monoLabel = TextStyle(
         fontFamily = MonoFamily,
         fontWeight = FontWeight.Medium,
@@ -80,7 +52,7 @@ object TuLogsType {
         color = Mist600
     )
 
-    /** The one big glanceable line on Home — "Tapped in at 11:02 PM." */
+    // The one big glanceable line on Home — "Tapped in at 11:02 PM."
     val statusHeadline = TextStyle(
         fontFamily = OutfitFamily,
         fontWeight = FontWeight.Medium,
@@ -90,7 +62,7 @@ object TuLogsType {
         color = Mist200
     )
 
-    /** Bold word inside statusHeadline (the actual time/fact) — apply Paper50 + SemiBold via SpanStyle. */
+    // Bold word inside statusHeadline — apply Paper50 + SemiBold via SpanStyle
     val statusHeadlineEmphasisWeight = FontWeight.SemiBold
 
     val statusSub = TextStyle(
@@ -100,7 +72,7 @@ object TuLogsType {
         color = Mist600
     )
 
-    /** Bedtime / Wake / Quality numbers in the last-night stat row. */
+    // Bedtime / Wake / Quality numbers in the last-night stat row
     val factValue = TextStyle(
         fontFamily = OutfitFamily,
         fontWeight = FontWeight.Medium,

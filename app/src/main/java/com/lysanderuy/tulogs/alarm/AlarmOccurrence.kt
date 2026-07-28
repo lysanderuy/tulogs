@@ -3,17 +3,10 @@ package com.lysanderuy.tulogs.alarm
 import com.lysanderuy.tulogs.data.local.Alarm
 import java.time.ZonedDateTime
 
-/**
- * Shared next-occurrence math for an [Alarm]. Used by both AlarmScheduler
- * (to know when to fire next) and the UI (to know which saved alarm is
- * soonest) so the two never drift apart.
- */
+// Shared next-occurrence math, used by both AlarmScheduler and the UI so they never drift apart
 object AlarmOccurrence {
 
-    /**
-     * Empty [Alarm.daysOfWeek] means a one-time alarm anchored to [Alarm.date].
-     * A non-empty set means a weekly repeat — a match is guaranteed within 7 days.
-     */
+    // Empty daysOfWeek = one-time alarm anchored to date; non-empty = weekly repeat
     fun nextTrigger(alarm: Alarm, now: ZonedDateTime = ZonedDateTime.now(), skipToday: Boolean = false): ZonedDateTime {
         if (alarm.daysOfWeek.isEmpty()) {
             return alarm.date.atTime(alarm.hour, alarm.minute).atZone(now.zone)
@@ -29,20 +22,11 @@ object AlarmOccurrence {
         error("Alarm ${alarm.id} has no repeat days configured")
     }
 
-    /**
-     * A repeating alarm is always upcoming — [nextTrigger] only ever returns a
-     * future day. A one-time alarm is upcoming only while its anchored date+time
-     * hasn't passed yet; once it has, there's no "next occurrence" to roll to.
-     */
+    // A repeating alarm is always upcoming; a one-time alarm stops being upcoming once its date+time passes
     fun isUpcoming(alarm: Alarm, now: ZonedDateTime = ZonedDateTime.now()): Boolean =
         nextTrigger(alarm, now).isAfter(now)
 
-    /**
-     * Matches stock alarm-clock behavior: turning on a one-time alarm whose
-     * date+time has already passed rolls it forward a day at a time until
-     * its next occurrence is actually upcoming, rather than refusing to enable
-     * it. Repeating alarms are always upcoming already, so they're untouched.
-     */
+    // Matches stock alarm-clock behavior: a past one-time alarm rolls forward a day at a time until upcoming
     fun rollToUpcoming(alarm: Alarm, now: ZonedDateTime = ZonedDateTime.now()): Alarm {
         if (alarm.daysOfWeek.isNotEmpty()) return alarm
         var candidate = alarm

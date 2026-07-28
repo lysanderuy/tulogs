@@ -30,9 +30,7 @@ class AlarmRepository @Inject constructor(
     suspend fun saveAlarm(alarm: Alarm) {
         val userId = authRepository.currentUserId ?: return
         val stamped = alarm.copy(userId = userId)
-        // A one-time alarm saved enabled rolls forward to its next occurrence
-        // if the picked date+time has already passed — matches stock
-        // alarm-clock behavior instead of refusing to save it.
+        // Matches stock alarm-clock behavior: rolls a past one-time alarm forward instead of refusing to save it
         val toPersist = if (stamped.isEnabled) AlarmOccurrence.rollToUpcoming(stamped) else stamped
         val id = if (toPersist.id == 0L) alarmDao.insert(toPersist) else {
             alarmDao.update(toPersist)
@@ -57,9 +55,7 @@ class AlarmRepository @Inject constructor(
         alarmDao.delete(alarm)
     }
 
-    // Early-wake auto-cancel: called when a WAKE tap closes an active
-    // SleepLog session before any alarm fired. Cancels today's remaining
-    // enabled alarms and reschedules each for its next applicable day.
+    // Called when a WAKE tap closes an active session before any alarm fired, to cancel today's remaining alarms
     suspend fun cancelRemainingToday() {
         val userId = authRepository.currentUserId ?: return
         val now = LocalDateTime.now()
@@ -82,8 +78,7 @@ class AlarmRepository @Inject constructor(
             }
     }
 
-    // Reschedules every enabled alarm for the currently signed-in user —
-    // called by BootReceiver, since AlarmManager alarms don't survive reboot.
+    // Called by BootReceiver — AlarmManager alarms don't survive reboot
     suspend fun rescheduleEnabledAlarms() {
         val userId = authRepository.currentUserId ?: return
         alarmDao.getEnabledAlarms(userId).first().forEach { alarm ->

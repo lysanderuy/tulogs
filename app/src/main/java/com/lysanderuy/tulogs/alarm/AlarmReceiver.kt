@@ -30,10 +30,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Only ring for an alarm that still belongs to the currently signed-in
-                // user — this returns null both when signed out and when the alarm
-                // belongs to a different account that was previously signed in on
-                // this device.
+                // Null both when signed out and when the alarm belongs to a different, previously signed-in account
                 val userId = authRepository.currentUserId
                 val alarm = userId?.let { alarmDao.getAlarmById(alarmId, it) }
                 if (alarm != null) {

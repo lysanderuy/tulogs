@@ -114,9 +114,7 @@ fun AlarmsScreen(
         }
     }
 
-    // Best-effort preview of what the repository will actually schedule —
-    // rollToUpcoming is the same pure function it uses, so this matches
-    // exactly without needing a round trip through Room.
+    // Uses the same pure rollToUpcoming the repository does, so this matches without a round trip through Room
     fun showRingInMessage(alarm: Alarm) {
         if (!alarm.isEnabled) return
         val trigger = AlarmOccurrence.nextTrigger(AlarmOccurrence.rollToUpcoming(alarm))
@@ -534,8 +532,7 @@ private fun HourMinuteWheelRow(
             .padding(horizontal = 24.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Single highlight spanning both wheels, drawn once so it reads as
-        // one connected pill instead of two separate per-wheel highlights.
+        // Single highlight spanning both wheels so it reads as one connected pill, not two separate ones
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -563,12 +560,7 @@ private fun HourMinuteWheelRow(
     }
 }
 
-/**
- * Scrolls through [values] endlessly in both directions by laying out many
- * repeats of the range and mapping each virtual index back with modulo —
- * LazyColumn only composes the visible window, so the huge item count costs
- * nothing at runtime.
- */
+// Scrolls endlessly by repeating the range and mapping virtual index back with modulo; LazyColumn only composes the visible window
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun WheelPicker(
@@ -588,11 +580,7 @@ private fun WheelPicker(
     val density = LocalDensity.current
     val itemHeightPx = with(density) { wheelItemHeight.toPx() }
 
-    // Derived directly from firstVisibleItemIndex + pixel scroll offset —
-    // since every item is the same fixed height, this pins down exactly
-    // which item's band contains the viewport's center, with no dependency
-    // on contentPadding-adjusted viewport offsets (which don't line up
-    // cleanly and caused the picker to land a couple items off-center).
+    // Derived from firstVisibleItemIndex + pixel offset rather than contentPadding-adjusted viewport offsets, which landed off-center
     val centeredIndex by remember {
         derivedStateOf {
             val fraction = listState.firstVisibleItemScrollOffset / itemHeightPx
@@ -609,10 +597,7 @@ private fun WheelPicker(
         modifier = modifier.height(wheelItemHeight * wheelVisibleCount),
         contentAlignment = Alignment.Center
     ) {
-        // No contentPadding needed: the virtual list is millions of items
-        // deep, so we never scroll near a real boundary, and skipping it
-        // avoids an edge-padding offset that was pushing the rendered
-        // rows out of alignment with the fixed highlight bar.
+        // No contentPadding: the virtual list is millions of items deep, so we never near a real boundary
         LazyColumn(
             state = listState,
             flingBehavior = flingBehavior,
