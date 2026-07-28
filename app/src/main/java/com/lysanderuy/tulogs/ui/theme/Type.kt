@@ -43,7 +43,7 @@ val MonoFamily = FontFamily(
 // Named text styles used directly by screens, like CSS design tokens, instead of Material's default type scale
 object TuLogsType {
 
-    // BEDTIME / WAKE / QUALITY / date-stamp labels — always short, never a sentence
+    // BEDTIME / WAKE / date-stamp labels — always short, never a sentence
     val monoLabel = TextStyle(
         fontFamily = MonoFamily,
         fontWeight = FontWeight.Medium,
@@ -72,7 +72,7 @@ object TuLogsType {
         color = Mist600
     )
 
-    // Bedtime / Wake / Quality numbers in the last-night stat row
+    // Bedtime / Wake numbers in the last-night stat row
     val factValue = TextStyle(
         fontFamily = OutfitFamily,
         fontWeight = FontWeight.Medium,

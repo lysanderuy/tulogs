@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,14 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lysanderuy.tulogs.ui.theme.Error500
 import com.lysanderuy.tulogs.ui.theme.Ink700
 import com.lysanderuy.tulogs.ui.theme.Ink800
 import com.lysanderuy.tulogs.ui.theme.Ink900
 import com.lysanderuy.tulogs.ui.theme.Ink950
 import com.lysanderuy.tulogs.ui.theme.Mist200
 import com.lysanderuy.tulogs.ui.theme.Mist400
-import com.lysanderuy.tulogs.ui.theme.Mist600
 import com.lysanderuy.tulogs.ui.theme.Paper50
 import com.lysanderuy.tulogs.ui.theme.TuLogsType
 
@@ -72,62 +69,6 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Text(text = email ?: "—", style = TuLogsType.captionText.copy(color = Mist400))
-                }
-            }
-
-            SettingsSection(label = "Data") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(width = 1.dp, color = Ink800, shape = RoundedCornerShape(14.dp))
-                        .background(Ink900)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Export your logs",
-                                style = TuLogsType.captionText.copy(color = Paper50)
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(Ink800)
-                                    .border(width = 1.dp, color = Ink700, shape = RoundedCornerShape(999.dp))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Text(text = "SOON", style = TuLogsType.monoLabel.copy(fontSize = 9.sp))
-                            }
-                        }
-                        Icon(
-                            imageVector = Icons.Outlined.ChevronRight,
-                            contentDescription = null,
-                            tint = Mist600,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "Delete all data", style = TuLogsType.captionText.copy(color = Error500))
-                        Icon(
-                            imageVector = Icons.Outlined.ChevronRight,
-                            contentDescription = null,
-                            tint = Mist600,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
                 }
             }
 

@@ -54,6 +54,7 @@ import com.lysanderuy.tulogs.ui.theme.TuLogsType
 // shape lives here, HomeViewModel owns it — keeps this file previewable without Hilt/Room
 data class HomeUiState(
     val dateLabel: String,          // "TUE 14 JUL"
+    val hasAlarm: Boolean,          // false = no alarm exists yet, alarmTime/alarmDays are placeholders
     val alarmTime: String,          // "6:30 AM"
     val alarmDays: String,          // "Weekdays"
     val isBedtimeLogged: Boolean,   // false = "before bed" state, true = "during sleep" state
@@ -64,7 +65,6 @@ data class HomeUiState(
 data class LastNightUiState(
     val bedtime: String,            // "11:02 PM"
     val wake: String,               // "6:24 AM"
-    val qualityRating: Int,         // 1..5, from SleepLog.qualityRating
     val screenOnAfterMinutes: Int?, // derived from screenOffTimestamp vs bedtimeTimestamp, nullable
     val duration: String            // "7h 42m" — derived from wakeTimestamp - bedtimeTimestamp
 )
@@ -143,11 +143,13 @@ private fun StatusBlock(uiState: HomeUiState) {
                 withStyle(SpanStyle(color = Paper50, fontWeight = TuLogsType.statusHeadlineEmphasisWeight)) {
                     append("${uiState.bedtimeLoggedAt}.")
                 }
-            } else {
+            } else if (uiState.hasAlarm) {
                 append("Alarm set for ")
                 withStyle(SpanStyle(color = Paper50, fontWeight = TuLogsType.statusHeadlineEmphasisWeight)) {
                     append("${uiState.alarmTime}.")
                 }
+            } else {
+                append("No alarm set yet.")
             }
         }
         Text(text = headline, style = TuLogsType.statusHeadline)
@@ -155,15 +157,16 @@ private fun StatusBlock(uiState: HomeUiState) {
         Spacer(modifier = Modifier.height(10.dp))
 
         val sub = if (uiState.isBedtimeLogged) {
-            "Alarm at ${uiState.alarmTime}"
-        } else {
+            if (uiState.hasAlarm) "Alarm at ${uiState.alarmTime}" else "No alarm set"
+        } else if (uiState.hasAlarm) {
             "${uiState.alarmDays} · nothing else to do yet"
+        } else {
+            "Set one in the Alarms tab"
         }
         Text(text = sub, style = TuLogsType.statusSub)
     }
 }
 
-// just a dot, not an icon — matches the quality dots down in LastNightFacts
 @Composable
 private fun StatusEyebrow(label: String, confirmed: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -212,13 +215,6 @@ private fun LastNightFacts(lastNight: LastNightUiState) {
             FactColumn(label = "Bedtime", value = lastNight.bedtime, modifier = Modifier.weight(1f))
             FactDivider()
             FactColumn(label = "Wake", value = lastNight.wake, modifier = Modifier.weight(1f))
-            FactDivider()
-            FactColumn(
-                label = "Quality",
-                value = qualityDots(lastNight.qualityRating),
-                valueColor = Amber500,
-                modifier = Modifier.weight(1f)
-            )
         }
 
         lastNight.screenOnAfterMinutes?.let { minutes ->
@@ -259,12 +255,6 @@ private fun FactDivider() {
             .height(32.dp)
             .background(Ink800)
     )
-}
-
-private fun qualityDots(rating: Int, total: Int = 5): String {
-    val filled = "●".repeat(rating.coerceIn(0, total))
-    val empty = "○".repeat((total - rating).coerceIn(0, total))
-    return filled + empty
 }
 
 // top/bottom only — a full border looks like a floating card on wider screens
@@ -348,6 +338,7 @@ private fun NavItem(label: String, icon: ImageVector, active: Boolean, onClick: 
 
 private val previewIdleState = HomeUiState(
     dateLabel = "TUE 14 JUL",
+    hasAlarm = true,
     alarmTime = "06:30",
     alarmDays = "Weekdays",
     isBedtimeLogged = false,
@@ -355,7 +346,6 @@ private val previewIdleState = HomeUiState(
     lastNight = LastNightUiState(
         bedtime = "23:02",
         wake = "06:24",
-        qualityRating = 4,
         screenOnAfterMinutes = 32,
         duration = "7h 22m"
     )
@@ -364,6 +354,12 @@ private val previewIdleState = HomeUiState(
 private val previewSessionState = previewIdleState.copy(
     isBedtimeLogged = true,
     bedtimeLoggedAt = "23:02"
+)
+
+private val previewNoAlarmState = previewIdleState.copy(
+    hasAlarm = false,
+    alarmTime = "Not set",
+    alarmDays = ""
 )
 
 @Preview(name = "Home — before bed", showBackground = true, backgroundColor = 0xFF05070C)
@@ -379,5 +375,13 @@ private fun HomeScreenIdlePreview() {
 private fun HomeScreenSessionPreview() {
     TuLogsTheme {
         HomeScreen(uiState = previewSessionState)
+    }
+}
+
+@Preview(name = "Home — no alarm set", showBackground = true, backgroundColor = 0xFF05070C)
+@Composable
+private fun HomeScreenNoAlarmPreview() {
+    TuLogsTheme {
+        HomeScreen(uiState = previewNoAlarmState)
     }
 }

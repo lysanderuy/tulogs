@@ -35,6 +35,7 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = HomeUiState(
             dateLabel = SleepTimeFormat.formatDateLabel(LocalDate.now()),
+            hasAlarm = false,
             alarmTime = "Not set",
             alarmDays = "",
             isBedtimeLogged = false,
@@ -55,7 +56,6 @@ class HomeViewModel @Inject constructor(
             LastNightUiState(
                 bedtime = SleepTimeFormat.formatClockTime(session.bedtimeTimestamp),
                 wake = SleepTimeFormat.formatClockTime(session.wakeTimestamp!!),
-                qualityRating = 0,
                 screenOnAfterMinutes = screenOnAfterMinutes(session),
                 duration = SleepTimeFormat.formatDuration(session.wakeTimestamp!! - session.bedtimeTimestamp)
             )
@@ -67,6 +67,7 @@ class HomeViewModel @Inject constructor(
 
         return HomeUiState(
             dateLabel = dateLabel,
+            hasAlarm = earliestAlarm != null,
             alarmTime = alarmTime,
             alarmDays = alarmDays,
             isBedtimeLogged = isBedtimeLogged,
