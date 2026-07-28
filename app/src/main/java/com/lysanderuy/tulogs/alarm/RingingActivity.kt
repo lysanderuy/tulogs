@@ -52,6 +52,7 @@ class RingingActivity : ComponentActivity() {
                         val savedWakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
                         if (savedWakeTag != null && savedWakeTag.uid == scannedUid) {
                             sleepLogRepository.endActiveSession(System.currentTimeMillis())
+                            stopService(Intent(this@RingingActivity, ScreenTrackingService::class.java))
                             status = "Dismissed!"
                             finish()
                         } else {

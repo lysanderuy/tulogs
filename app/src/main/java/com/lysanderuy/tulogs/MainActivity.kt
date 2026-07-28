@@ -34,6 +34,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.lysanderuy.tulogs.alarm.ScreenTrackingService
 import com.lysanderuy.tulogs.data.AlarmRepository
 import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
@@ -158,7 +159,11 @@ class MainActivity : ComponentActivity() {
                         composable("home") {
                             val homeViewModel: HomeViewModel by viewModels()
                             val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
-                            HomeScreen(uiState = uiState, onSettingsClick = { navController.navigate("settings") })
+                            HomeScreen(
+                                uiState = uiState,
+                                onSettingsClick = { navController.navigate("settings") },
+                                onStopTracking = { lifecycleScope.launch { endSessionAndStopTracking() } }
+                            )
                         }
                         composable("settings") {
                             val settingsViewModel: SettingsViewModel by viewModels()
@@ -274,20 +279,26 @@ class MainActivity : ComponentActivity() {
                     val bedtimeTag = sleepTagRepository.getTagByType(TagType.BEDTIME)
                     if (bedtimeTag != null && bedtimeTag.uid == uid) {
                         sleepLogRepository.startSession(System.currentTimeMillis())
+                        startForegroundService(Intent(this@MainActivity, ScreenTrackingService::class.java))
                         Log.d("NFC_TEST", "Sleep session started")
                         Log.d("NFC_PERF", "session_started t=${SystemClock.elapsedRealtime()}")
                     }
 
                     val wakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
                     if (wakeTag != null && wakeTag.uid == uid) {
-                        val wokeNaturally = sleepLogRepository.endActiveSession(System.currentTimeMillis())
-                        if (wokeNaturally) {
-                            Log.d("NFC_TEST", "Natural wake — cancelling remaining alarms for today")
-                            alarmRepository.cancelRemainingToday()
-                        }
+                        endSessionAndStopTracking()
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun endSessionAndStopTracking() {
+        val wokeNaturally = sleepLogRepository.endActiveSession(System.currentTimeMillis())
+        stopService(Intent(this@MainActivity, ScreenTrackingService::class.java))
+        if (wokeNaturally) {
+            Log.d("NFC_TEST", "Natural wake — cancelling remaining alarms for today")
+            alarmRepository.cancelRemainingToday()
         }
     }
 
