@@ -7,7 +7,7 @@ import androidx.room.TypeConverters
 @Database(
     entities = [Alarm::class, SleepTag::class, SleepLog::class],
     version = 5,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class TuLogsDatabase : RoomDatabase() {
