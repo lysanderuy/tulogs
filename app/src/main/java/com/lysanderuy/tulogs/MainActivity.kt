@@ -40,6 +40,7 @@ import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.TagType
 import com.lysanderuy.tulogs.nfc.NfcForegroundDispatcher
+import com.lysanderuy.tulogs.nfc.WakeTagHandler
 import com.lysanderuy.tulogs.ui.alarms.AlarmsScreen
 import com.lysanderuy.tulogs.ui.alarms.AlarmsViewModel
 import com.lysanderuy.tulogs.ui.auth.AuthScreen
@@ -71,6 +72,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var alarmRepository: AlarmRepository
+
+    @Inject
+    lateinit var wakeTagHandler: WakeTagHandler
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -276,7 +280,7 @@ class MainActivity : ComponentActivity() {
                 lifecycleScope.launch {
                     Log.d("NFC_PERF", "passive_check_start t=${SystemClock.elapsedRealtime()}")
                     val bedtimeTag = sleepTagRepository.getTagByType(TagType.BEDTIME)
-                    if (bedtimeTag != null && bedtimeTag.uid == uid) {
+                    if (bedtimeTag != null && bedtimeTag.uid == uid && !sleepLogRepository.hasActiveSession()) {
                         sleepLogRepository.startSession(System.currentTimeMillis())
                         startForegroundService(Intent(this@MainActivity, ScreenTrackingService::class.java))
                         Log.d("NFC_TEST", "Sleep session started")
@@ -285,19 +289,10 @@ class MainActivity : ComponentActivity() {
 
                     val wakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
                     if (wakeTag != null && wakeTag.uid == uid) {
-                        endSessionAndStopTracking()
+                        wakeTagHandler.handleWakeScan(this@MainActivity)
                     }
                 }
             }
-        }
-    }
-
-    private suspend fun endSessionAndStopTracking() {
-        val wokeNaturally = sleepLogRepository.endActiveSession(System.currentTimeMillis())
-        stopService(Intent(this@MainActivity, ScreenTrackingService::class.java))
-        if (wokeNaturally) {
-            Log.d("NFC_TEST", "Natural wake — cancelling remaining alarms for today")
-            alarmRepository.cancelRemainingToday()
         }
     }
 

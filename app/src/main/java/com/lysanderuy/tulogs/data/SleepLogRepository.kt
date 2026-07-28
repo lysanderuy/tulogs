@@ -32,6 +32,11 @@ class SleepLogRepository @Inject constructor(
         }
     }
 
+    suspend fun hasActiveSession(): Boolean {
+        val userId = authRepository.currentUserId ?: return false
+        return sleepLogDao.getActiveSession(userId) != null
+    }
+
     suspend fun startSession(bedtimeTimestamp: Long): Long {
         val userId = authRepository.currentUserId ?: return -1
         return sleepLogDao.insert(SleepLog(userId = userId, bedtimeTimestamp = bedtimeTimestamp))

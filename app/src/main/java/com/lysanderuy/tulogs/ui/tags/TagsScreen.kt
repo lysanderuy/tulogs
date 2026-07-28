@@ -71,7 +71,12 @@ fun TagsScreen(
         Text(
             text = "Tags",
             style = TuLogsType.statusHeadline,
-            modifier = Modifier.padding(vertical = 24.dp)
+            modifier = Modifier.padding(top = 24.dp)
+        )
+        Text(
+            text = "Your phone screen must be on and unlocked for a tag tap to register.",
+            style = TuLogsType.captionText.copy(fontSize = 12.5.sp, color = Mist600),
+            modifier = Modifier.padding(bottom = 24.dp, top = 4.dp)
         )
 
         TagCard(
