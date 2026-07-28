@@ -165,7 +165,7 @@ private fun TagCard(
             Text(
                 text = when (status) {
                     TagRowStatus.WAITING -> "Waiting for tag…"
-                    TagRowStatus.SAVING -> "Tag detected — saving…"
+                    TagRowStatus.SAVING -> "Tag detected, saving…"
                     TagRowStatus.IDLE -> if (isRegistered) "Tag registered" else "Not registered"
                 },
                 style = TuLogsType.statusHeadline.copy(

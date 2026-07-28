@@ -213,7 +213,7 @@ private fun AlarmListScreen(
                 Text(text = "No alarms yet", style = TuLogsType.statusHeadline)
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Add one to get started — TuLogs will remind you with a tag tap, not a nag.",
+                    text = "Add one and TuLogs will remind you with a tag tap, not a nag.",
                     style = TuLogsType.captionText,
                     textAlign = TextAlign.Center
                 )
