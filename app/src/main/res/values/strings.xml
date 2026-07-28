@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">TuLogs</string>
+    <string name="bedtime_notification_channel_name">Bedtime</string>
+    <string name="bedtime_notification_title">Ready for bed?</string>
+    <string name="bedtime_notification_text">Tap to confirm and start your sleep log.</string>
+    <string name="bedtime_notification_confirm">Yes</string>
+    <string name="bedtime_notification_dismiss">Not now</string>
 </resources>

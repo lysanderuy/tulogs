@@ -2,17 +2,7 @@ package com.lysanderuy.tulogs.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/**
- * TuLogs color tokens.
- *
- * Single dark "night sky" theme — the app is mostly used in dark rooms,
- * so there is deliberately no light variant for MVP.
- *
- * Naming mirrors the CSS custom properties used in the HTML design
- * iterations, so this file should stay in sync with any future
- * tulogs_tokens.css if one gets generated.
- */
-
+// Single dark "night sky" theme, no light variant for MVP — names mirror tulogs_tokens.css if generated
 // ---- ink / night (backgrounds & surfaces) ----
 val Ink950 = Color(0xFF0A0E17) // app background
 val Ink900 = Color(0xFF111726) // raised surface

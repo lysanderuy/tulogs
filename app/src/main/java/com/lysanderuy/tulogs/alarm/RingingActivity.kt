@@ -20,6 +20,7 @@ import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.local.TagType
 import com.lysanderuy.tulogs.nfc.NfcForegroundDispatcher
+import com.lysanderuy.tulogs.nfc.WakeTagHandler
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -32,6 +33,9 @@ class RingingActivity : ComponentActivity() {
 
     @Inject
     lateinit var sleepLogRepository: SleepLogRepository
+
+    @Inject
+    lateinit var wakeTagHandler: WakeTagHandler
 
     private val nfcDispatcher by lazy { NfcForegroundDispatcher(this) }
     private var onUidScanned: (String) -> Unit = {}
@@ -51,8 +55,7 @@ class RingingActivity : ComponentActivity() {
                     lifecycleScope.launch {
                         val savedWakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
                         if (savedWakeTag != null && savedWakeTag.uid == scannedUid) {
-                            sleepLogRepository.endActiveSession(System.currentTimeMillis())
-                            stopService(Intent(this@RingingActivity, ScreenTrackingService::class.java))
+                            wakeTagHandler.handleWakeScan(this@RingingActivity)
                             status = "Dismissed!"
                             finish()
                         } else {

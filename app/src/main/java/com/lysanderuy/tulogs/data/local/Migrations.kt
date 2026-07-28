@@ -6,7 +6,6 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 // v1 -> v2 bumped the version but nothing in the schema actually changed
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        // No-op: schema is unchanged between v1 and v2.
     }
 }
 

@@ -40,6 +40,7 @@ import com.lysanderuy.tulogs.data.SleepTagRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.TagType
 import com.lysanderuy.tulogs.nfc.NfcForegroundDispatcher
+import com.lysanderuy.tulogs.nfc.WakeTagHandler
 import com.lysanderuy.tulogs.ui.alarms.AlarmsScreen
 import com.lysanderuy.tulogs.ui.alarms.AlarmsViewModel
 import com.lysanderuy.tulogs.ui.auth.AuthScreen
@@ -71,6 +72,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var alarmRepository: AlarmRepository
+
+    @Inject
+    lateinit var wakeTagHandler: WakeTagHandler
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -185,10 +189,7 @@ class MainActivity : ComponentActivity() {
                                 registeringType = null
                             }
 
-                            // awaitingConfirmation is separate from registeringType so the row keeps
-                            // showing feedback until uiState actually reflects the new UID, instead of
-                            // flipping back to idle the instant the tag is scanned but before the DB
-                            // write + Flow emission has caught up.
+                            // Separate from registeringType so the row keeps showing feedback until uiState catches up with the new UID
                             LaunchedEffect(uiState, awaitingConfirmation) {
                                 val type = awaitingConfirmation ?: return@LaunchedEffect
                                 val confirmed = when (type) {
@@ -198,9 +199,7 @@ class MainActivity : ComponentActivity() {
                                 if (confirmed) awaitingConfirmation = null
                             }
 
-                            // Navigating away from Tags must not leave a stale registration
-                            // mode active — e.g. Home's passive BEDTIME-scan-to-start-session
-                            // check relies on registrationModeGetter() returning null.
+                            // Must clear registration mode on nav away — Home's passive BEDTIME-scan check relies on it being null
                             DisposableEffect(Unit) {
                                 onDispose {
                                     registrationModeGetter = { null }
@@ -252,8 +251,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         val uid = nfcDispatcher.readTagUid(intent) ?: return
         Log.d("NFC_TEST", "NFC tag scanned, UID: $uid")
-        // elapsedRealtime() is monotonic and unaffected by wall-clock changes — required for
-        // measuring a round trip, unlike System.currentTimeMillis().
+        // elapsedRealtime() is monotonic, unlike System.currentTimeMillis(), so it's safe for measuring a round trip
         Log.d("NFC_PERF", "tag_detected uid=$uid t=${SystemClock.elapsedRealtime()}")
         vibrateTagDetected()
         // Capture the mode before onUidScanned runs — it resets registeringType synchronously.
@@ -276,7 +274,7 @@ class MainActivity : ComponentActivity() {
                 lifecycleScope.launch {
                     Log.d("NFC_PERF", "passive_check_start t=${SystemClock.elapsedRealtime()}")
                     val bedtimeTag = sleepTagRepository.getTagByType(TagType.BEDTIME)
-                    if (bedtimeTag != null && bedtimeTag.uid == uid) {
+                    if (bedtimeTag != null && bedtimeTag.uid == uid && !sleepLogRepository.hasActiveSession()) {
                         sleepLogRepository.startSession(System.currentTimeMillis())
                         startForegroundService(Intent(this@MainActivity, ScreenTrackingService::class.java))
                         Log.d("NFC_TEST", "Sleep session started")
@@ -285,19 +283,10 @@ class MainActivity : ComponentActivity() {
 
                     val wakeTag = sleepTagRepository.getTagByType(TagType.WAKE)
                     if (wakeTag != null && wakeTag.uid == uid) {
-                        endSessionAndStopTracking()
+                        wakeTagHandler.handleWakeScan(this@MainActivity)
                     }
                 }
             }
-        }
-    }
-
-    private suspend fun endSessionAndStopTracking() {
-        val wokeNaturally = sleepLogRepository.endActiveSession(System.currentTimeMillis())
-        stopService(Intent(this@MainActivity, ScreenTrackingService::class.java))
-        if (wokeNaturally) {
-            Log.d("NFC_TEST", "Natural wake — cancelling remaining alarms for today")
-            alarmRepository.cancelRemainingToday()
         }
     }
 

@@ -5,11 +5,7 @@ import androidx.room.PrimaryKey
 import java.time.DayOfWeek
 import java.time.LocalDate
 
-/**
- * A one-time alarm (no repeat days) fires once on [date] at [hour]:[minute]
- * and disables itself afterward. A repeating alarm (non-empty [daysOfWeek])
- * ignores [date] and fires weekly on the selected days.
- */
+// A one-time alarm (empty daysOfWeek) fires once on date and disables itself; otherwise it repeats weekly on daysOfWeek
 @Entity(tableName = "alarms")
 data class Alarm(
     @PrimaryKey(autoGenerate = true)

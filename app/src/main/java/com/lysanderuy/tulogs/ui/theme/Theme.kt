@@ -5,11 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-/**
- * TuLogs is dark-only for MVP (see Color.kt) — isSystemInDarkTheme() is
- * intentionally unused for now but left wired in case a light variant
- * is ever added post-MVP.
- */
+// Dark-only for MVP — isSystemInDarkTheme() import is left wired for a future light variant
 private val TuLogsColorScheme = darkColorScheme(
     background = Ink950,
     surface = Ink900,
