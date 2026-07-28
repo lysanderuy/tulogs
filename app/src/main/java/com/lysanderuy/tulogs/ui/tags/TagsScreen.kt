@@ -71,7 +71,7 @@ fun TagsScreen(
         Text(
             text = "Tags",
             style = TuLogsType.statusHeadline,
-            modifier = Modifier.padding(top = 24.dp)
+            modifier = Modifier.padding(top = 24.dp, bottom = 24.dp)
         )
 
         TagCard(
