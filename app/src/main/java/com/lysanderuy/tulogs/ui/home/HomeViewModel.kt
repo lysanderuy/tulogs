@@ -7,22 +7,17 @@ import com.lysanderuy.tulogs.data.AlarmRepository
 import com.lysanderuy.tulogs.data.SleepLogRepository
 import com.lysanderuy.tulogs.data.local.Alarm
 import com.lysanderuy.tulogs.data.local.SleepLog
+import com.lysanderuy.tulogs.util.SleepTimeFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-
-private val dateLabelFormatter = DateTimeFormatter.ofPattern("EEE d MMM")
-private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -39,7 +34,7 @@ class HomeViewModel @Inject constructor(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = HomeUiState(
-            dateLabel = LocalDate.now().format(dateLabelFormatter).uppercase(),
+            dateLabel = SleepTimeFormat.formatDateLabel(LocalDate.now()),
             alarmTime = "Not set",
             alarmDays = "",
             isBedtimeLogged = false,
@@ -49,25 +44,25 @@ class HomeViewModel @Inject constructor(
     )
 
     private fun buildUiState(logs: List<SleepLog>, alarms: List<Alarm>): HomeUiState {
-        val dateLabel = LocalDate.now().format(dateLabelFormatter).uppercase()
+        val dateLabel = SleepTimeFormat.formatDateLabel(LocalDate.now())
 
         val activeSession = logs.firstOrNull { it.wakeTimestamp == null }
         val isBedtimeLogged = activeSession != null
-        val bedtimeLoggedAt = activeSession?.let { formatTimestamp(it.bedtimeTimestamp) }
+        val bedtimeLoggedAt = activeSession?.let { SleepTimeFormat.formatClockTime(it.bedtimeTimestamp) }
 
         val lastCompletedSession = logs.firstOrNull { it.wakeTimestamp != null }
         val lastNight = lastCompletedSession?.let { session ->
             LastNightUiState(
-                bedtime = formatTimestamp(session.bedtimeTimestamp),
-                wake = formatTimestamp(session.wakeTimestamp!!),
+                bedtime = SleepTimeFormat.formatClockTime(session.bedtimeTimestamp),
+                wake = SleepTimeFormat.formatClockTime(session.wakeTimestamp!!),
                 qualityRating = 0,
                 screenOnAfterMinutes = screenOnAfterMinutes(session),
-                duration = formatDuration(session.wakeTimestamp!! - session.bedtimeTimestamp)
+                duration = SleepTimeFormat.formatDuration(session.wakeTimestamp!! - session.bedtimeTimestamp)
             )
         }
 
         val earliestAlarm = alarms.minByOrNull { AlarmOccurrence.nextTrigger(it).toInstant().toEpochMilli() }
-        val alarmTime = earliestAlarm?.let { LocalTime.of(it.hour, it.minute).format(timeFormatter) } ?: "Not set"
+        val alarmTime = earliestAlarm?.let { SleepTimeFormat.formatClockTime(LocalTime.of(it.hour, it.minute)) } ?: "Not set"
         val alarmDays = earliestAlarm?.let { it.label.ifBlank { formatDays(it.daysOfWeek) } } ?: ""
 
         return HomeUiState(
@@ -94,20 +89,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun formatDuration(durationMillis: Long): String {
-        val totalMinutes = durationMillis / 60000
-        return "${totalMinutes / 60}h ${totalMinutes % 60}m"
-    }
-
     private fun screenOnAfterMinutes(session: SleepLog): Int? {
         val firstScreenOn = session.firstScreenOnTimestamp ?: return null
         if (firstScreenOn <= session.bedtimeTimestamp) return null
         return ((firstScreenOn - session.bedtimeTimestamp) / 60000).toInt()
-    }
-
-    private fun formatTimestamp(timestamp: Long): String {
-        return Instant.ofEpochMilli(timestamp)
-            .atZone(ZoneId.systemDefault())
-            .format(timeFormatter)
     }
 }
