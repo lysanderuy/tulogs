@@ -5,12 +5,16 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.lysanderuy.tulogs.R
 
 class AlarmRingingService : Service() {
+
+    private var mediaPlayer: MediaPlayer? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -42,7 +46,33 @@ class AlarmRingingService : Service() {
 
         startForeground(NOTIFICATION_ID, notification)
 
+        startAlarmSound()
+
         return START_STICKY
+    }
+
+    private fun startAlarmSound() {
+        mediaPlayer?.release()
+        mediaPlayer = MediaPlayer().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ALARM)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            resources.openRawResourceFd(R.raw.alarm).use { afd ->
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            }
+            isLooping = true
+            prepare()
+            start()
+        }
+    }
+
+    override fun onDestroy() {
+        mediaPlayer?.release()
+        mediaPlayer = null
+        super.onDestroy()
     }
 
     private fun createNotificationChannel() {
